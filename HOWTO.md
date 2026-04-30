@@ -1,0 +1,232 @@
+# HOWTO: AI Sandbox 使用指南
+
+## Windows
+
+### 啟動
+
+1. 雙擊 `ai-sandbox-windows-amd64.exe`
+2. 首次啟動會自動下載所有工具（Node.js、Gemini CLI、Python、Git 等），約需 2-3 分鐘
+3. 下載完成後自動開啟瀏覽器，顯示 Web Terminal
+
+### 啟動 Gemini CLI
+
+在 Web Terminal 裡直接輸入：
+
+```bash
+gemini
+```
+
+首次使用時，你可以選擇以下任一方式進行驗證：
+
+#### 方法一：使用 Google 帳號（推薦）
+
+直接輸入 `gemini` 後，在選單中選擇 **Sign in with Google**。系統會自動開啟瀏覽器讓你登入 Google 帳號。登入完成後即可開始使用。
+
+*注意：如果你使用的是 Google Workspace 或有付費授權的帳號，可能需要設定專案 ID：`export GOOGLE_CLOUD_PROJECT="YOUR_PROJECT_ID"`*
+
+#### 方法二：使用 API Key
+
+如果你在遠端伺服器或無法使用瀏覽器的環境，可以使用 API Key：
+
+```bash
+gemini --api-key YOUR_GEMINI_API_KEY
+```
+
+或透過環境變數（在 terminal 裡輸入）：
+
+```bash
+export GEMINI_API_KEY=YOUR_GEMINI_API_KEY
+gemini
+```
+
+### 檢查環境
+
+Gemini CLI 啟動後，第一件事輸入：
+
+```
+check env
+```
+
+這會自動執行環境檢查（tool-status-checker skill），包括：
+- 確認 curl、uv、python、cat 等工具是否可用
+- 若 `.venv` 不存在，自動用 `uv venv .venv --python 3.12` 建立
+- 掃描 `.gemini/skills/*/scripts/*.py` 的 import，自動安裝第三方套件
+- 更新 `TOOLS.md` 記錄環境狀態
+
+接著輸入：
+
+```
+show env
+```
+
+確認環境變數和工具路徑都正確。最後輸入：
+
+```
+memory
+```
+
+讓 Gemini 記住目前的環境狀態，後續對話不需要重複檢查。
+
+### 圖片分析
+
+在 Web Terminal 裡直接 **Ctrl+V 貼上截圖**，系統會自動儲存並呼叫 Gemini 分析圖片內容。
+
+### CLI 模式
+
+如果不想用瀏覽器，也可以用命令列：
+
+```cmd
+ai-sandbox-windows-amd64.exe shell
+```
+
+這會開啟一個 Git Bash 終端（不經過瀏覽器），sandbox 工具都在 PATH 裡。
+
+### 其他指令
+
+```cmd
+ai-sandbox-windows-amd64.exe init      # 設定 API Key 和工作目錄
+ai-sandbox-windows-amd64.exe setup     # 手動下載工具
+ai-sandbox-windows-amd64.exe status    # 顯示已安裝工具版本
+ai-sandbox-windows-amd64.exe web -p 9090  # 指定 port
+ai-sandbox-windows-amd64.exe clean     # 刪除 sandbox 目錄
+```
+
+---
+
+## macOS / Linux
+
+### 啟動
+
+```bash
+# macOS (Apple Silicon)
+chmod +x ai-sandbox-darwin-arm64
+./ai-sandbox-darwin-arm64
+
+# macOS (Intel)
+chmod +x ai-sandbox-darwin-amd64
+./ai-sandbox-darwin-amd64
+
+# Linux
+chmod +x ai-sandbox-linux-amd64
+./ai-sandbox-linux-amd64
+```
+
+首次啟動會自動下載工具，完成後自動開啟瀏覽器。
+
+### 啟動 Gemini CLI
+
+在 Web Terminal 裡輸入：
+
+```bash
+gemini
+```
+
+首次使用時，你可以選擇以下任一方式進行驗證：
+
+#### 方法一：使用 Google 帳號（推薦）
+
+直接輸入 `gemini` 後，在選單中選擇 **Sign in with Google**。系統會自動開啟瀏覽器讓你登入 Google 帳號。登入完成後即可開始使用。
+
+*注意：如果你使用的是 Google Workspace 或有付費授權的帳號，可能需要設定專案 ID：`export GOOGLE_CLOUD_PROJECT="YOUR_PROJECT_ID"`*
+
+#### 方法二：使用 API Key
+
+設定 API Key 環境變數：
+
+```bash
+export GEMINI_API_KEY=YOUR_GEMINI_API_KEY
+gemini
+```
+
+### 檢查環境
+
+Gemini CLI 啟動後，第一件事輸入：
+
+```
+check env
+```
+
+這會自動執行環境檢查（tool-status-checker skill），包括：
+- 確認 curl、uv、python、cat 等工具是否可用
+- 若 `.venv` 不存在，自動用 `uv venv .venv --python 3.12` 建立
+- 掃描 `.gemini/skills/*/scripts/*.py` 的 import，自動安裝第三方套件
+- 更新 `TOOLS.md` 記錄環境狀態
+
+接著輸入：
+
+```
+show env
+```
+
+確認環境變數和工具路徑都正確。最後輸入：
+
+```
+memory 記一下 env
+```
+
+讓 Gemini 記住目前的環境狀態，後續對話不需要重複檢查。
+
+### 使用 zsh 或其他 Shell
+
+預設使用系統的 `$SHELL`（通常是 bash 或 zsh）。也可以手動指定：
+
+```bash
+# 用 zsh
+./ai-sandbox-darwin-arm64 web --shell zsh
+
+# 用 fish
+./ai-sandbox-darwin-arm64 web --shell /usr/local/bin/fish
+
+# shell 模式也支援
+./ai-sandbox-darwin-arm64 shell --shell zsh
+```
+
+### CLI 模式（不開瀏覽器）
+
+```bash
+./ai-sandbox-darwin-arm64 shell
+```
+
+直接在目前的終端開啟一個帶 sandbox PATH 的子 shell。
+
+### 其他指令
+
+```bash
+./ai-sandbox-darwin-arm64 init       # 設定 API Key 和工作目錄
+./ai-sandbox-darwin-arm64 setup      # 手動下載工具
+./ai-sandbox-darwin-arm64 status     # 顯示已安裝工具版本
+./ai-sandbox-darwin-arm64 web -p 9090  # 指定 port
+./ai-sandbox-darwin-arm64 clean      # 刪除 sandbox 目錄
+```
+
+---
+
+## 常見問題
+
+### Q: Gemini CLI 說找不到 API Key？
+
+你可以選擇以下任一方式：
+
+1. **使用 Google 帳號**：直接輸入 `gemini` 並選擇 **Sign in with Google**。
+2. **設定環境變數**：
+   ```bash
+   export GEMINI_API_KEY=YOUR_KEY
+   ```
+3. **執行 `ai-sandbox init`**：透過互動式精靈設定 API Key。
+
+### Q: Windows 上 Gemini 找不到 curl？
+
+確認使用最新版的 `ai-sandbox`，已內建 Portable Git（含 curl、grep 等 Unix 工具）。
+
+### Q: macOS 提示「無法打開，因為無法驗證開發者」？
+
+```bash
+xattr -d com.apple.quarantine ./ai-sandbox-darwin-arm64
+```
+
+### Q: 如何更新工具？
+
+```bash
+./ai-sandbox clean    # 刪除舊的
+./ai-sandbox setup    # 重新下載
+```

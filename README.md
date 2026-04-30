@@ -1,0 +1,124 @@
+# AI Sandbox CLI
+
+A portable, zero-install AI development sandbox. Double-click to launch a browser-based terminal with Gemini CLI, GitHub Copilot CLI, Python, Node.js, and Git — all self-contained, no system dependencies required.
+
+## Features
+
+- **Portable** — Everything lives in `./sandbox/`, no global installs
+- **Web Terminal** — xterm.js in the browser with full PTY support (winpty on Windows, native PTY on macOS/Linux)
+- **Double-click to start** — Auto-downloads tools on first run, opens browser
+- **Image paste** — Paste screenshots directly into the terminal for Gemini analysis
+- **Cross-platform** — Windows (amd64), macOS (amd64/arm64), Linux (amd64)
+- **SKILL system** — Gemini CLI skills for automated workflows (e.g. blog writing + SEO + WordPress publishing)
+
+## Quick Start
+
+### Windows
+
+1. Download `ai-sandbox-windows-amd64.exe`
+2. Double-click — it auto-downloads tools and opens a browser terminal
+3. Type `gemini` to start chatting
+
+### macOS / Linux
+
+```bash
+chmod +x ai-sandbox-darwin-arm64   # or ai-sandbox-linux-amd64
+./ai-sandbox-darwin-arm64
+```
+
+The browser opens automatically with a terminal connected to your shell.
+
+## CLI Commands
+
+```
+ai-sandbox init      Configure API keys and workspace path
+ai-sandbox setup     Download all tools to ./sandbox/
+ai-sandbox shell     Open a local terminal with sandbox tools in PATH
+ai-sandbox web       Open a browser-based terminal
+ai-sandbox status    Show installed tool versions
+ai-sandbox clean     Remove the sandbox directory
+```
+
+### Global Flags
+
+```
+-d, --dir string     Sandbox directory path (default "./sandbox")
+-h, --help           Help for ai-sandbox
+    --version        Print version
+```
+
+### `web` / `shell` Flags
+
+```
+-p, --port string    Web terminal port (default "8088")
+    --shell string   Shell to use (macOS/Linux only)
+                     Examples: --shell zsh, --shell /usr/local/bin/fish
+                     Default: $SHELL or /bin/bash
+```
+
+> On Windows, the `--shell` flag is ignored — the portable Git Bash is always used.
+
+## Architecture
+
+```
+ai-sandbox(.exe)          Single binary (Go)
+├── cmd/                  CLI commands (cobra)
+├── internal/
+│   ├── config/           Config management (~/.ai-sandbox/config.json)
+│   ├── toolchain/        Download & manage portable tools
+│   └── web/              Web terminal server
+│       ├── server.go         HTTP server + static files
+│       ├── terminal.go       WebSocket ↔ shell bridge
+│       ├── winpty_windows.go PTY via winpty.dll (Windows)
+│       └── pty_unix.go       PTY via creack/pty (macOS/Linux)
+└── sandbox/              Downloaded tools (auto-created)
+    ├── bin/              Shim scripts (gemini, git, node, python, uv)
+    ├── node/             Node.js 22
+    ├── python/           Python 3.12 (via uv)
+    ├── git/              Portable Git for Windows
+    ├── gemini/           Gemini CLI
+    ├── copilot/          GitHub Copilot CLI
+    └── uv/               uv package manager
+```
+
+## Bundled Tools
+
+| Tool | Version | Purpose |
+|------|---------|---------|
+| Node.js | 22.x | Runtime for Gemini CLI & Copilot CLI |
+| Gemini CLI | latest | Google AI assistant |
+| GitHub Copilot CLI | latest | GitHub AI assistant |
+| Python | 3.12 | Scripting, automation |
+| uv | latest | Fast Python package manager |
+| Git | Portable | Version control (Windows only, macOS/Linux use system git) |
+
+## Development
+
+### Build (Docker)
+
+```bash
+docker compose build --no-cache
+docker compose run --rm build
+```
+
+Outputs all platform binaries to `./dist/`.
+
+### Build (local, current platform only)
+
+```bash
+go build -o ai-sandbox .
+```
+
+### Project Structure
+
+```
+main.go              Entry point (double-click → web server, CLI → cobra)
+cmd/                 CLI commands
+internal/config/     Config with tests
+internal/toolchain/  Tool download/install with tests
+internal/web/        Web terminal (xterm.js + WebSocket + PTY)
+```
+
+## License
+
+MIT
