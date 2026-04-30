@@ -1,5 +1,5 @@
 """
-WordPress REST API Poster (persona-writer 共用版)
+WordPress REST API Poster (per-persona 設定版)
 
 用法:
   python3 wp_poster.py <persona-slug> <標題> <內容或檔案路徑> [狀態]
@@ -9,8 +9,9 @@ WordPress REST API Poster (persona-writer 共用版)
 
 說明:
   - <persona-slug> 對應 persona-writer/personas/<slug>/ 資料夾名稱
+  - WordPress 連線資訊從該人格的 personas/<slug>/wp-config.json 讀取
+  - 每個人格對應一個 WordPress 部落格,設定獨立不共用
   - 發布成功後,文章紀錄會寫入該人格資料夾下的 published.json
-  - WordPress 連線資訊統一從 persona-writer/scripts/wp-config.json 讀取
 """
 
 import requests
@@ -23,31 +24,45 @@ from datetime import date
 # --- 路徑與設定 ---
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 _SKILL_ROOT = os.path.dirname(_SCRIPT_DIR)  # persona-writer/
-_CONFIG_PATH = os.path.join(_SCRIPT_DIR, "wp-config.json")
 _PERSONAS_DIR = os.path.join(_SKILL_ROOT, "personas")
 
 
-def _load_config():
-    """從 wp-config.json 讀取共用設定,不存在則退回環境變數。"""
-    cfg = {}
-    if os.path.exists(_CONFIG_PATH):
-        with open(_CONFIG_PATH, "r", encoding="utf-8") as f:
-            cfg = json.load(f)
-    return {
-        "url": cfg.get("WP_URL") or os.getenv("WP_URL", ""),
-        "user": cfg.get("WP_USER") or os.getenv("WP_USER", ""),
-        "password": cfg.get("WP_APP_PWD") or os.getenv("WP_APP_PWD", ""),
-    }
+def _persona_dir(persona_slug):
+    """回傳指定人格的資料夾路徑。"""
+    return os.path.join(_PERSONAS_DIR, persona_slug)
+
+
+def _config_path(persona_slug):
+    """回傳指定人格的 wp-config.json 路徑。"""
+    return os.path.join(_persona_dir(persona_slug), "wp-config.json")
 
 
 def _published_json_path(persona_slug):
     """回傳指定人格的 published.json 路徑。"""
-    return os.path.join(_PERSONAS_DIR, persona_slug, "published.json")
+    return os.path.join(_persona_dir(persona_slug), "published.json")
 
 
 def _persona_exists(persona_slug):
     """檢查人格資料夾是否存在。"""
-    return os.path.isdir(os.path.join(_PERSONAS_DIR, persona_slug))
+    return os.path.isdir(_persona_dir(persona_slug))
+
+
+def _load_persona_config(persona_slug):
+    """從該人格的 wp-config.json 讀取設定。回傳 None 表示尚未設定。"""
+    path = _config_path(persona_slug)
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            cfg = json.load(f)
+        return {
+            "url": cfg.get("WP_URL", ""),
+            "user": cfg.get("WP_USER", ""),
+            "password": cfg.get("WP_APP_PWD", ""),
+        }
+    except (json.JSONDecodeError, IOError) as e:
+        print(f"錯誤: 讀取 {path} 失敗: {e}")
+        return None
 
 
 def post_to_wordpress(persona_slug, title, content, status="draft"):
@@ -55,21 +70,24 @@ def post_to_wordpress(persona_slug, title, content, status="draft"):
     使用 WordPress REST API 建立文章
     status: 'publish' (直接發佈), 'draft' (草稿), 'private' (私用), 'pending' (待審核)
     """
-    cfg = _load_config()
-    wp_url = cfg["url"]
-    wp_user = cfg["user"]
-    wp_pwd = cfg["password"]
-
-    if not wp_url.startswith("http"):
-        print("錯誤: 請設定正確的 WP_URL (需包含 http:// 或 https://)")
-        return
-
+    # 1. 檢查人格資料夾存在
     if not _persona_exists(persona_slug):
         print(f"錯誤: 找不到人格資料夾 personas/{persona_slug}/")
         print("請先用 marketing-content-factory 模組 5 建立新人格,或確認名稱是否正確。")
         return
 
-    endpoint = f"{wp_url.rstrip('/')}/wp-json/wp/v2/posts"
+    # 2. 檢查該人格的 WordPress 設定存在
+    cfg = _load_persona_config(persona_slug)
+    if cfg is None:
+        print(f"錯誤: 人格「{persona_slug}」尚未設定 WordPress 連線。")
+        print(f"請到 marketing-content-factory 設定該人格的 WordPress(每個人格的部落格設定獨立)。")
+        return
+
+    if not cfg["url"].startswith("http"):
+        print("錯誤: 該人格的 WP_URL 不正確,需包含 http:// 或 https://")
+        return
+
+    endpoint = f"{cfg['url'].rstrip('/')}/wp-json/wp/v2/posts"
 
     payload = {
         "title": title,
@@ -81,7 +99,7 @@ def post_to_wordpress(persona_slug, title, content, status="draft"):
         response = requests.post(
             endpoint,
             json=payload,
-            auth=HTTPBasicAuth(wp_user, wp_pwd),
+            auth=HTTPBasicAuth(cfg["user"], cfg["password"]),
             timeout=30,
         )
 
@@ -89,6 +107,7 @@ def post_to_wordpress(persona_slug, title, content, status="draft"):
             data = response.json()
             print("\n✅ 成功！文章已建立。")
             print(f"人格: {persona_slug}")
+            print(f"目標部落格: {cfg['url']}")
             print(f"文章 ID: {data.get('id')}")
             print(f"文章連結: {data.get('link')}")
             print(f"目前狀態: {data.get('status')}")
@@ -127,11 +146,11 @@ def _append_published(persona_slug, title, url, post_id):
 
 if __name__ == "__main__":
     if len(sys.argv) < 4:
-        print("--- WordPress REST API Poster (persona-writer) ---")
+        print("--- WordPress REST API Poster (per-persona 設定版) ---")
         print("用法: python3 wp_poster.py <persona-slug> <標題> <內容或檔案路徑> [狀態]")
         print("範例: python3 wp_poster.py mrs-lin-slow-travel '九份慢旅' './article.html' draft")
         print("\n* 預設狀態為 'draft' (草稿)。")
-        print("* persona-slug 對應 personas/<slug>/ 資料夾。")
+        print("* 每個人格使用 personas/<slug>/wp-config.json 內的設定。")
         sys.exit(1)
 
     persona_slug = sys.argv[1]

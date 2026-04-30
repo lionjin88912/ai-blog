@@ -221,18 +221,22 @@ memory 記一下 env
 
 ```
 .gemini/skills/
-├── marketing-content-factory/   ← 行銷對話入口(L2)
-├── persona-writer/              ← 通用寫手 SOP(L3)
-│   ├── scripts/wp_poster.py     ← 共用發布腳本
-│   ├── scripts/wp-config.json   ← 共用 WP 設定(.gitignore)
+├── marketing-content-factory/        ← 行銷對話入口(L2)
+├── persona-writer/                   ← 通用寫手 SOP(L3)
+│   ├── scripts/wp_poster.py          ← 共用發布腳本(per-persona 讀取設定)
 │   └── personas/
-│       ├── _template/           ← 新人格範本
-│       └── mrs-lin-slow-travel/ ← 內建林太人格
-├── tool-status-checker/         ← 環境檢查(L1)
-└── translate-zh-tw/             ← 翻譯工具(L4)
+│       ├── _template/                ← 新人格範本(含 wp-config.example.json)
+│       └── mrs-lin-slow-travel/      ← 內建林太人格
+│           ├── persona.md
+│           ├── wp-config.json        ← 林太自己的 WP 連線(.gitignore)
+│           └── published.json        ← 林太的發文紀錄(.gitignore)
+├── tool-status-checker/              ← 環境檢查(L1)
+└── translate-zh-tw/                  ← 翻譯工具(L4)
 ```
 
-新增人格不用寫程式,行銷同仁透過 marketing-content-factory 模組 5 對話就能生出來。
+**設計原則:每個人格 = 一個品牌 = 一個 WordPress 部落格**,設定獨立不共用。
+
+新增人格不用寫程式,行銷同仁透過 marketing-content-factory 模組 5 對話 11 題(8 題人格 + 3 題 WordPress)就能生出來。
 
 ---
 
