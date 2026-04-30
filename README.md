@@ -13,7 +13,6 @@ A portable, zero-install AI development sandbox. Double-click to launch a browse
   - `marketing-content-factory` — friendly chat entry for non-technical users (5 modules: setup / write / examples / FAQ / create new persona)
   - `persona-writer` — generic writing engine (research → visuals → SEO → publish), reads persona configs from `personas/<slug>/persona.md`
   - `tool-status-checker` — environment verification + auto venv setup
-  - `translate-zh-tw` — Traditional Chinese (Taiwan) localization
   - Built-in persona: `mrs-lin-slow-travel` (林太, 58yo retired teacher, slow-travel cultural blog)
 
 ## Quick Start

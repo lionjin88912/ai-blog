@@ -32,7 +32,6 @@
   ✓ marketing-content-factory  — 行銷內容對話入口(你會直接跟它說話)
   ✓ persona-writer             — 通用寫手 SOP(幕後執行)
   ✓ tool-status-checker        — 環境檢查
-  ✓ translate-zh-tw            — 繁中翻譯與在地化
 ```
 
 #### 2A-4. 把環境狀態記下來(memory)
@@ -60,8 +59,8 @@
 | 「如何開始」「你能做什麼」「help」「你好」 | `marketing-content-factory`(顯示選單) |
 | 「設定 WordPress」「綁帳號」「重新設定」 | `marketing-content-factory` 模組 1 |
 | 「新增寫手」「建立人格」「我想多一個人格」 | `marketing-content-factory` 模組 5 |
+| 「修改 XXX 的口吻」「林太太正經」「調整人格」 | `marketing-content-factory` 模組 6 |
 | 「失敗」「錯誤」「跑不出來」 | `marketing-content-factory` 模組 4 |
-| 「翻譯」「localize」「繁中化」 | `translate-zh-tw` |
 | 「檢查環境」「check env」「裝套件」 | `tool-status-checker` |
 
 ---
@@ -88,3 +87,8 @@
 3. **派任務寫文章時,呼叫 `persona-writer` 並傳入 persona-slug**,不要直接執行 SOP。
 4. **WordPress 帳密、應用程式密碼**:可以在對話中收集並寫進 `personas/<slug>/wp-config.json`,但**絕對不要顯示在訊息中**(收到後預覽時用「已收到(出於安全不顯示)」代替)。
 5. **使用者不需要懂技術**,任何技術名詞(JSON、API、endpoint…)在對話中都要先翻成白話。
+6. **Auto-Git 政策**:只有兩種情況自動 commit,其他狀況不要主動 commit:
+   - 模組 5 建立新人格成功後 → `git add personas/<slug>/persona.md` + commit
+   - 模組 6 修改現有人格後 → 同上
+   - **絕對只 add 指定的 persona.md**,不要 `git add .` 或 `git add -A`(避免帶進 wp-config.json 之類機密)
+   - `.git/` 不存在時靜默跳過(不要報錯嚇行銷)
