@@ -39,37 +39,35 @@ export GEMINI_API_KEY=YOUR_GEMINI_API_KEY
 gemini
 ```
 
-### 檢查環境
+### 開始使用(自動準備環境)
 
-Gemini CLI 啟動後，第一件事輸入：
-
-```
-check env
-```
-
-這會自動執行環境檢查（tool-status-checker skill），包括：
-- 確認 curl、uv、python、cat 等工具是否可用
-- 若 `.venv` 不存在，自動用 `uv venv .venv --python 3.12` 建立
-- 掃描 `.gemini/skills/*/scripts/*.py` 的 import，自動安裝第三方套件
-- 更新 `TOOLS.md` 記錄環境狀態
-
-接著輸入：
+Gemini CLI 啟動後,**直接打一句話就好**,例如:
 
 ```
-show env
+如何開始
 ```
 
-確認環境變數和工具路徑都正確。最後輸入：
+或:
 
 ```
-memory
+我要寫一篇行銷文章
 ```
 
-讓 Gemini 記住目前的環境狀態，後續對話不需要重複檢查。
+Gemini 會在第一次互動時自動完成所有準備工作:
+- ✅ 環境檢查(curl / uv / python / cat 版本驗證)
+- ✅ 自動建立 `.venv`(如果還沒)
+- ✅ 自動掃描並安裝 Python 套件依賴
+- ✅ 寫 `TOOLS.md` 記錄狀態
+- ✅ 列出可用的能力(skill 清單)
+- ✅ 記憶本次環境狀態
+
+完成後直接顯示行銷工廠的 5 項選單,你回一個數字就開始用了。
+
+> 💡 **不需要記任何指令**。如果你是技術人員想手動觸發環境檢查,也可以打 `check env`。
 
 ### 圖片分析
 
-在 Web Terminal 裡直接 **Ctrl+V 貼上截圖**，系統會自動儲存並呼叫 Gemini 分析圖片內容。
+在 Web Terminal 裡直接 **Ctrl+V 貼上截圖**,系統會自動儲存並呼叫 Gemini 分析圖片內容。
 
 ### CLI 模式
 
@@ -138,33 +136,23 @@ export GEMINI_API_KEY=YOUR_GEMINI_API_KEY
 gemini
 ```
 
-### 檢查環境
+### 開始使用(自動準備環境)
 
-Gemini CLI 啟動後，第一件事輸入：
-
-```
-check env
-```
-
-這會自動執行環境檢查（tool-status-checker skill），包括：
-- 確認 curl、uv、python、cat 等工具是否可用
-- 若 `.venv` 不存在，自動用 `uv venv .venv --python 3.12` 建立
-- 掃描 `.gemini/skills/*/scripts/*.py` 的 import，自動安裝第三方套件
-- 更新 `TOOLS.md` 記錄環境狀態
-
-接著輸入：
+Gemini CLI 啟動後,**直接打一句話就好**,例如:
 
 ```
-show env
+如何開始
 ```
 
-確認環境變數和工具路徑都正確。最後輸入：
+或:
 
 ```
-memory 記一下 env
+我要寫一篇行銷文章
 ```
 
-讓 Gemini 記住目前的環境狀態，後續對話不需要重複檢查。
+Gemini 會在第一次互動時自動完成所有準備工作(環境檢查、建立 `.venv`、安裝套件、列出可用能力、記錄環境狀態),完成後直接顯示行銷工廠的 5 項選單,你回一個數字就開始用了。
+
+> 💡 **不需要記任何指令**。如果你是技術人員想手動觸發環境檢查,也可以打 `check env`。
 
 ### 使用 zsh 或其他 Shell
 
@@ -203,15 +191,21 @@ memory 記一下 env
 
 ## 📝 環境裝完了,接下來呢?
 
-如果你是行銷同仁,環境跑完 `check env` + `memory 記一下 env` 之後,**直接到 [BOOTSTRAP.md](./BOOTSTRAP.md) 開始用**。
+如果你是行銷同仁,**直接到 [BOOTSTRAP.md](./BOOTSTRAP.md) 開始用**。
 
-簡而言之,你只需要對 Gemini 說一句話:
+簡而言之,只要在 Gemini CLI 隨便打一句話,例如:
+
+```
+如何開始
+```
+
+或:
 
 ```
 我要寫一篇行銷文章
 ```
 
-接下來會跳出 5 項選單,跟著選就好。整個系統設計成「不需要懂技術」,有問題就直接問 Gemini「失敗了幫我看看」即可。
+Gemini 會自動完成環境準備(第一次需要約 30 秒)→ 列出能力 → 顯示 5 項選單,你回一個數字就開始用了。整個系統設計成「不需要懂技術」,有問題就直接問 Gemini「失敗了幫我看看」即可。
 
 完整使用流程、5 個模組、如何新增寫手人格,都在 BOOTSTRAP.md 有寫。
 

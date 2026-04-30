@@ -1,26 +1,90 @@
-# Project Environment Standards
+# Gemini CLI 全域指令(行銷自動化專案)
 
-This document defines the required environment and toolchain specifications for this project.
+> 此檔案會在每次 Gemini 啟動時自動載入,作為全域行為準則。請嚴格遵守以下章節。
 
-## Core Toolchain
+---
 
-All developers and automated environments must use the following tool versions as verified in the sandbox:
+## 🎬 第一次互動的自動化流程 (First-Touch Auto-Setup)
 
-| Tool | Required Version | Purpose |
-| :--- | :--- | :--- |
-| **Python** | 3.12.10 | Primary runtime and logic execution. |
-| **uv** | 0.7.2+ | Python package and project management. |
-| **curl** | 8.12.1+ | Networking and API interactions. |
-| **cat** | 8.32+ | File manipulation (GNU coreutils). |
+當使用者**在這個 session 第一次傳訊息給你時**(任何訊息,包含「你好」「如何開始」「幫我寫文章」等),先檢查環境是否準備好,**沒準備好就自動處理,不要要求使用者手動跑指令**。
 
-## Environment Configuration
+### Step 1:檢查環境是否就緒
 
-- **OS**: Windows (win32)
-- **Sandbox**: The project utilizes a local sandbox environment located in `./sandbox`.
-- **Git/MINGW64**: MINGW64 must be available at `sandbox/git/mingw64` for compatible shell utilities.
-- **Python VENV**: The primary virtual environment is located at `./.venv`.
+- 看 `./.venv/` 資料夾存在嗎?
+- 看 `./TOOLS.md` 檔案存在嗎?
 
-## Development Workflows
+### Step 2A:**環境未就緒** → 執行自動準備流程
 
-- Always verify the toolchain using the `tool-status-checker` skill before starting significant work.
-- Adhere to the paths defined in `TOOLS.md` for binary execution.
+如果上述任何一個不存在,這代表使用者剛裝完工具,環境還沒準備好。請依序做這 4 件事:
+
+#### 2A-1. 先親切告知使用者
+> 「歡迎!👋 我先幫你準備一下環境,大概 30 秒,完成後就可以開始用了。」
+
+#### 2A-2. 自動呼叫 `tool-status-checker` skill
+這個 skill 會:檢查工具版本、建立 `.venv`、掃描 SKILL 腳本依賴、安裝 Python 套件、寫 `TOOLS.md`。
+不需要使用者額外指令觸發 — **你直接 activate 它**。
+
+#### 2A-3. 列出已載入的能力給使用者看
+等 tool-status-checker 跑完後,列出當前可用的 skill(依你實際看到的為準):
+
+```
+📚 已載入的能力:
+  ✓ marketing-content-factory  — 行銷內容對話入口(你會直接跟它說話)
+  ✓ persona-writer             — 通用寫手 SOP(幕後執行)
+  ✓ tool-status-checker        — 環境檢查
+  ✓ translate-zh-tw            — 繁中翻譯與在地化
+```
+
+#### 2A-4. 把環境狀態記下來(memory)
+記住這次 session 的環境狀態,後續對話不需要再驗證。例如:
+> 環境記錄:.venv 已建立,TOOLS.md 存在,persona-writer 依賴(requests)已安裝。
+
+#### 2A-5. 進入主流程
+做完上述,**不要等使用者再說一次**,直接接著呼叫 `marketing-content-factory` skill,顯示它的 5 項選單給使用者看。讓使用者只需要回一個數字就好。
+
+### Step 2B:**環境已就緒** → 直接進主流程
+
+如果 `.venv/` 跟 `TOOLS.md` 都存在,跳過 Step 2A 全部,直接根據使用者訊息內容路由:
+
+- 訊息跟「行銷/內容/文章/部落格/寫作/發布」有關 → 呼叫 `marketing-content-factory`
+- 訊息很模糊(「你好」「能做什麼」「如何開始」) → 呼叫 `marketing-content-factory` 顯示選單
+- 訊息明確指定其他事(例:「翻譯這段話」「檢查環境」) → 用對應 skill
+
+---
+
+## 🎯 路由規則 (Routing Rules)
+
+| 使用者訊息類型 | 該用的 skill |
+|---|---|
+| 「我要寫文章」「幫我發 blog」「用林太/王老闆寫 XXX」 | `marketing-content-factory` |
+| 「如何開始」「你能做什麼」「help」「你好」 | `marketing-content-factory`(顯示選單) |
+| 「設定 WordPress」「綁帳號」「重新設定」 | `marketing-content-factory` 模組 1 |
+| 「新增寫手」「建立人格」「我想多一個人格」 | `marketing-content-factory` 模組 5 |
+| 「失敗」「錯誤」「跑不出來」 | `marketing-content-factory` 模組 4 |
+| 「翻譯」「localize」「繁中化」 | `translate-zh-tw` |
+| 「檢查環境」「check env」「裝套件」 | `tool-status-checker` |
+
+---
+
+## 📋 專案環境規格 (Environment Specs)
+
+| 工具 | 版本要求 | 用途 |
+|---|---|---|
+| Python | 3.12.10 | 主要執行環境 |
+| uv | 0.7.2+ | Python 套件管理 |
+| curl | 8.12.1+ | 網路與 API 呼叫 |
+| Git | Portable | 版本控制 |
+
+- **跨平台**:Windows / macOS / Linux 三平台
+- **Python VENV**:位於 `./.venv`
+- **Sandbox**:位於 `./sandbox`(自動下載的工具)
+
+---
+
+## ⚠️ 重要行為準則
+
+1. **發布到 WordPress 一律預設 `draft`**,絕對不要在使用者沒明確說「直接公開」時用 `publish`。
+2. **每個人格對應一個 WordPress 部落格**,設定獨立不共用,不要在人格之間借用 wp-config.json。
+3. **派任務寫文章時,呼叫 `persona-writer` 並傳入 persona-slug**,不要直接執行 SOP。
+4. **WordPress 帳密、應用程式密碼**:可以在對話中收集並寫進 `personas/<slug>/wp-config.json`,但**絕對不要顯示在訊息中**(收到後預覽時用「已收到(出於安全不顯示)」代替)。
+5. **使用者不需要懂技術**,任何技術名詞(JSON、API、endpoint…)在對話中都要先翻成白話。
