@@ -114,14 +114,16 @@ curl --location "https://script.google.com/macros/s/AKfycbxlQSTNpSifs9t6gt-0QNYP
 ### 5. HTML 存檔 (HTML Storage Phase)
 
 - **工具**:`write_file`。
-- **路徑**:`./<persona-slug>/yyyymmdd-location-topic.html`
+- **路徑**:`.gemini/skills/persona-writer/personas/<persona-slug>/articles/yyyymmdd-location-topic.html`
 - **內容**:完整 HTML 文件(含 `<!DOCTYPE html>`、`<head>`、`<body>`、JSON-LD)。
+- **建立資料夾**:如果 `articles/` 不存在,write_file 會自動建立。
+- **設計理由**:把產出的草稿 HTML 跟人格其他資料(persona.md / wp-config.json / published.json)放一起,結構乾淨,且 .gitignore 只要一條 `personas/*/articles/` 就涵蓋所有現在與未來的人格。
 
 ### 6. 自動發布 (Publishing Phase)
 
-執行 shell 指令:
+執行 shell 指令(注意 HTML 路徑已改到人格資料夾下):
 ```
-python3 .gemini/skills/persona-writer/scripts/wp_poster.py <persona-slug> "<標題>" "<HTML檔案路徑>" draft
+python3 .gemini/skills/persona-writer/scripts/wp_poster.py <persona-slug> "<標題>" ".gemini/skills/persona-writer/personas/<persona-slug>/articles/<filename>.html" draft
 ```
 
 - 第一個參數**必須**是 persona-slug,腳本會用它定位該人格的 `published.json`。
@@ -171,12 +173,15 @@ persona-writer/
     │   └── wp-config.example.json    ← WP 設定範例
     ├── mrs-lin-slow-travel/
     │   ├── persona.md                ← 林太人格設定
-    │   ├── wp-config.json            ← 林太的 WordPress 連線(機密)
-    │   └── published.json            ← 林太發文紀錄
+    │   ├── wp-config.json            ← 林太的 WordPress 連線(機密,.gitignore)
+    │   ├── published.json            ← 林太發文紀錄(.gitignore)
+    │   └── articles/                 ← 寫文章時自動產生的 HTML 草稿(.gitignore)
+    │       └── yyyymmdd-xxx.html
     └── (未來人格.../)
         ├── persona.md
         ├── wp-config.json            ← 各自獨立的 WP 設定
-        └── published.json
+        ├── published.json
+        └── articles/
 ```
 
 **重點**:每個人格資料夾下都有自己的 `wp-config.json`(對應一個 WordPress 部落格),沒有全域共用設定。
