@@ -55,12 +55,13 @@
 
 | 使用者訊息類型 | 該用的 skill |
 |---|---|
-| 「我要寫文章」「幫我發 blog」「用林太/王老闆寫 XXX」 | `marketing-content-factory` |
 | 「如何開始」「你能做什麼」「help」「你好」 | `marketing-content-factory`(顯示選單) |
-| 「設定 WordPress」「綁帳號」「重新設定」 | `marketing-content-factory` 模組 1 |
-| 「新增寫手」「建立人格」「我想多一個人格」 | `marketing-content-factory` 模組 5 |
-| 「修改 XXX 的口吻」「林太太正經」「調整人格」 | `marketing-content-factory` 模組 6 |
-| 「失敗」「錯誤」「跑不出來」 | `marketing-content-factory` 模組 4 |
+| 「設定 WordPress」「綁帳號」「重新設定」「設定林太/王老闆的 WP」 | `marketing-content-factory` 模組 1 |
+| 「我要寫文章」「幫我發 blog」「用林太/王老闆寫 XXX」「寫一篇關於 XXX」 | `marketing-content-factory` 模組 2 |
+| 「指令範例」「我可以怎麼跟你說」「給我句子範例」 | `marketing-content-factory` 模組 3 |
+| 「失敗」「錯誤」「跑不出來」「不能用」 | `marketing-content-factory` 模組 4 |
+| 「新增寫手」「建立人格」「我想多一個人格」「我想做美食家」 | `marketing-content-factory` 模組 5 |
+| 「修改 XXX 的口吻」「林太太正經」「調整人格」「改活潑一點」 | `marketing-content-factory` 模組 6 |
 | 「檢查環境」「check env」「裝套件」 | `tool-status-checker` |
 
 ---
