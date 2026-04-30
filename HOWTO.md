@@ -201,6 +201,41 @@ memory 記一下 env
 
 ---
 
+## 📝 環境裝完了,接下來呢?
+
+如果你是行銷同仁,環境跑完 `check env` + `memory 記一下 env` 之後,**直接到 [BOOTSTRAP.md](./BOOTSTRAP.md) 開始用**。
+
+簡而言之,你只需要對 Gemini 說一句話:
+
+```
+我要寫一篇行銷文章
+```
+
+接下來會跳出 5 項選單,跟著選就好。整個系統設計成「不需要懂技術」,有問題就直接問 Gemini「失敗了幫我看看」即可。
+
+完整使用流程、5 個模組、如何新增寫手人格,都在 BOOTSTRAP.md 有寫。
+
+---
+
+## 🏗️ 系統架構(技術人員看)
+
+```
+.gemini/skills/
+├── marketing-content-factory/   ← 行銷對話入口(L2)
+├── persona-writer/              ← 通用寫手 SOP(L3)
+│   ├── scripts/wp_poster.py     ← 共用發布腳本
+│   ├── scripts/wp-config.json   ← 共用 WP 設定(.gitignore)
+│   └── personas/
+│       ├── _template/           ← 新人格範本
+│       └── mrs-lin-slow-travel/ ← 內建林太人格
+├── tool-status-checker/         ← 環境檢查(L1)
+└── translate-zh-tw/             ← 翻譯工具(L4)
+```
+
+新增人格不用寫程式,行銷同仁透過 marketing-content-factory 模組 5 對話就能生出來。
+
+---
+
 ## 常見問題
 
 ### Q: Gemini CLI 說找不到 API Key？

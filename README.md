@@ -9,7 +9,12 @@ A portable, zero-install AI development sandbox. Double-click to launch a browse
 - **Double-click to start** — Auto-downloads tools on first run, opens browser
 - **Image paste** — Paste screenshots directly into the terminal for Gemini analysis
 - **Cross-platform** — Windows (amd64), macOS (amd64/arm64), Linux (amd64)
-- **SKILL system** — Gemini CLI skills for automated workflows (e.g. blog writing + SEO + WordPress publishing)
+- **SKILL system** — Pre-installed marketing automation skills:
+  - `marketing-content-factory` — friendly chat entry for non-technical users (5 modules: setup / write / examples / FAQ / create new persona)
+  - `persona-writer` — generic writing engine (research → visuals → SEO → publish), reads persona configs from `personas/<slug>/persona.md`
+  - `tool-status-checker` — environment verification + auto venv setup
+  - `translate-zh-tw` — Traditional Chinese (Taiwan) localization
+  - Built-in persona: `mrs-lin-slow-travel` (林太, 58yo retired teacher, slow-travel cultural blog)
 
 ## Quick Start
 
