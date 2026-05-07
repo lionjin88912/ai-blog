@@ -132,7 +132,43 @@ def _post_via_app_password(persona_slug, cfg, title, content, status):
 
 def _post_via_oauth2(persona_slug, cfg, title, content, status):
     """WordPress.com hosted — OAuth2 Bearer token via public-api.wordpress.com."""
-    raise NotImplementedError("OAuth2 publishing arrives in Task 4")
+    site_url = cfg.get("WP_URL", "")
+    access_token = cfg.get("WP_ACCESS_TOKEN", "")
+
+    if not site_url.startswith("http"):
+        print("錯誤: 該人格的 WP_URL 不正確,需包含 http:// 或 https://")
+        return
+    if not access_token:
+        print(
+            "錯誤: 該人格還沒拿到 access token。請執行:\n"
+            f"  python3 .gemini/skills/persona-writer/scripts/wp_oauth_setup.py {persona_slug}"
+        )
+        return
+
+    from urllib.parse import urlparse
+    host = urlparse(site_url).hostname or site_url
+
+    endpoint = f"https://public-api.wordpress.com/wp/v2/sites/{host}/posts"
+    payload = {"title": title, "content": content, "status": status}
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
+
+    try:
+        response = requests.post(endpoint, json=payload, headers=headers, timeout=30)
+    except Exception as e:
+        print(f"\n☢️ 發生錯誤: {str(e)}")
+        return
+
+    if response.status_code == 401:
+        print(
+            "\n❌ 失敗:401 未授權。Access token 可能已被撤銷或 client secret 已重置。\n"
+            f"請重新跑授權: python3 .gemini/skills/persona-writer/scripts/wp_oauth_setup.py {persona_slug}"
+        )
+        return
+
+    _report_response(persona_slug, site_url, title, response)
 
 
 def _report_response(persona_slug, target_url, title, response):
