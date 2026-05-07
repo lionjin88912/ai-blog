@@ -48,76 +48,106 @@ def _persona_exists(persona_slug):
 
 
 def _load_persona_config(persona_slug):
-    """從該人格的 wp-config.json 讀取設定。回傳 None 表示尚未設定。"""
+    """Load and normalise the persona's WP config. Returns None if missing.
+
+    Adds an "auth_method" key, defaulting to "application_password" if absent
+    (back-compat for configs written before the OAuth feature).
+    """
     path = _config_path(persona_slug)
     if not os.path.exists(path):
         return None
     try:
         with open(path, "r", encoding="utf-8") as f:
             cfg = json.load(f)
-        return {
-            "url": cfg.get("WP_URL", ""),
-            "user": cfg.get("WP_USER", ""),
-            "password": cfg.get("WP_APP_PWD", ""),
-        }
     except (json.JSONDecodeError, IOError) as e:
         print(f"錯誤: 讀取 {path} 失敗: {e}")
         return None
 
+    auth_method = cfg.get("auth_method")
+    if not auth_method:
+        # Legacy config (no auth_method field) — infer from contents
+        auth_method = "application_password" if cfg.get("WP_APP_PWD") else None
+
+    cfg["auth_method"] = auth_method
+    return cfg
+
 
 def post_to_wordpress(persona_slug, title, content, status="draft"):
     """
-    使用 WordPress REST API 建立文章
-    status: 'publish' (直接發佈), 'draft' (草稿), 'private' (私用), 'pending' (待審核)
+    Dispatch to the correct backend based on the persona's auth_method.
+    status: 'publish' | 'draft' | 'private' | 'pending'
     """
-    # 1. 檢查人格資料夾存在
     if not _persona_exists(persona_slug):
         print(f"錯誤: 找不到人格資料夾 personas/{persona_slug}/")
         print("請先用 marketing-content-factory 模組 5 建立新人格,或確認名稱是否正確。")
         return
 
-    # 2. 檢查該人格的 WordPress 設定存在
     cfg = _load_persona_config(persona_slug)
     if cfg is None:
         print(f"錯誤: 人格「{persona_slug}」尚未設定 WordPress 連線。")
-        print(f"請到 marketing-content-factory 設定該人格的 WordPress(每個人格的部落格設定獨立)。")
+        print("請到 marketing-content-factory 模組 1 設定該人格的 WordPress。")
         return
 
-    if not cfg["url"].startswith("http"):
+    auth_method = cfg.get("auth_method")
+    if auth_method == "application_password":
+        _post_via_app_password(persona_slug, cfg, title, content, status)
+    elif auth_method == "oauth2":
+        _post_via_oauth2(persona_slug, cfg, title, content, status)
+    else:
+        print(
+            f"錯誤: 人格「{persona_slug}」的 wp-config.json 沒有指定 auth_method, "
+            "也無法從欄位推斷。請重新跑模組 1 設定。"
+        )
+
+
+def _post_via_app_password(persona_slug, cfg, title, content, status):
+    """Self-hosted WP / Atomic — Basic Auth + Application Password."""
+    url = cfg.get("WP_URL", "")
+    user = cfg.get("WP_USER", "")
+    app_pwd = cfg.get("WP_APP_PWD", "")
+
+    if not url.startswith("http"):
         print("錯誤: 該人格的 WP_URL 不正確,需包含 http:// 或 https://")
         return
+    if not (user and app_pwd):
+        print("錯誤: 該人格的 wp-config.json 缺 WP_USER 或 WP_APP_PWD。")
+        return
 
-    endpoint = f"{cfg['url'].rstrip('/')}/wp-json/wp/v2/posts"
-
-    payload = {
-        "title": title,
-        "content": content,
-        "status": status,
-    }
+    endpoint = f"{url.rstrip('/')}/wp-json/wp/v2/posts"
+    payload = {"title": title, "content": content, "status": status}
 
     try:
         response = requests.post(
             endpoint,
             json=payload,
-            auth=HTTPBasicAuth(cfg["user"], cfg["password"]),
+            auth=HTTPBasicAuth(user, app_pwd),
             timeout=30,
         )
-
-        if response.status_code == 201:
-            data = response.json()
-            print("\n✅ 成功！文章已建立。")
-            print(f"人格: {persona_slug}")
-            print(f"目標部落格: {cfg['url']}")
-            print(f"文章 ID: {data.get('id')}")
-            print(f"文章連結: {data.get('link')}")
-            print(f"目前狀態: {data.get('status')}")
-            _append_published(persona_slug, title, data.get("link", ""), data.get("id"))
-        else:
-            print(f"\n❌ 失敗。狀態碼: {response.status_code}")
-            print(f"回應內容: {response.text}")
-
     except Exception as e:
         print(f"\n☢️ 發生錯誤: {str(e)}")
+        return
+
+    _report_response(persona_slug, url, title, response)
+
+
+def _post_via_oauth2(persona_slug, cfg, title, content, status):
+    """WordPress.com hosted — OAuth2 Bearer token via public-api.wordpress.com."""
+    raise NotImplementedError("OAuth2 publishing arrives in Task 4")
+
+
+def _report_response(persona_slug, target_url, title, response):
+    if response.status_code == 201:
+        data = response.json()
+        print("\n✅ 成功！文章已建立。")
+        print(f"人格: {persona_slug}")
+        print(f"目標部落格: {target_url}")
+        print(f"文章 ID: {data.get('id')}")
+        print(f"文章連結: {data.get('link')}")
+        print(f"目前狀態: {data.get('status')}")
+        _append_published(persona_slug, title, data.get("link", ""), data.get("id"))
+    else:
+        print(f"\n❌ 失敗。狀態碼: {response.status_code}")
+        print(f"回應內容: {response.text}")
 
 
 def _append_published(persona_slug, title, url, post_id):
