@@ -26,14 +26,25 @@ from urllib.parse import urlparse
 _SCRIPT_RE = re.compile(r"<script\b[^>]*>.*?</script>", re.DOTALL | re.IGNORECASE)
 
 
-def _strip_unsafe_html(content: str) -> str:
-    """Remove <script>...</script> blocks before POSTing.
+def _strip_script_tags(content: str) -> str:
+    """Remove <script>...</script> blocks before POSTing to WordPress.
 
-    WordPress REST API strips <script> tags as a security default (wp.com is
-    especially strict). When the tag boundaries are removed, the JSON inside
-    leaks into the visible body. Strip them here so the leak never happens —
-    JSON-LD belongs in <head> via an SEO plugin, not in post content.
+    WordPress REST API strips <script> tag boundaries as a security default
+    (wp.com is especially strict). When the boundaries are stripped, the JSON
+    inside leaks into the visible body. We pre-strip here so the leak never
+    happens — JSON-LD belongs in <head> via an SEO plugin, not in post content.
+
+    Limitations (intentional, real risk ~zero for travel / lifestyle prose):
+    - Lazy match stops at first `</script>` — `</script>` inside a JS string
+      literal would truncate. JSON strings can't contain raw `</script>` so
+      this is fine for JSON-LD.
+    - HTML entities (`&lt;script&gt;`) are NOT stripped — code-block / docs
+      content like `<pre><code>&lt;script&gt;…</code></pre>` survives intact.
+    - Only `<script>` is handled. `<style>`, `<iframe>`, etc. are also tag-
+      stripped by wp.com but persona-writer doesn't emit them.
     """
+    if not content:
+        return content
     return _SCRIPT_RE.sub("", content)
 
 # --- 路徑與設定 ---
@@ -103,7 +114,7 @@ def post_to_wordpress(persona_slug, title, content, status="draft"):
         print("請到 marketing-content-factory 模組 1 設定該人格的 WordPress。")
         return
 
-    content = _strip_unsafe_html(content)
+    content = _strip_script_tags(content)
 
     auth_method = cfg.get("auth_method")
     if auth_method == "application_password":
