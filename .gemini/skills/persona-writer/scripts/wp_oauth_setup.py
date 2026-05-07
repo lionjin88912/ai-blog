@@ -34,10 +34,13 @@ REDIRECT_PORT = 8080
 REDIRECT_URI = f"http://localhost:{REDIRECT_PORT}/callback"
 AUTHORIZE_URL = "https://public-api.wordpress.com/oauth2/authorize"
 TOKEN_URL = "https://public-api.wordpress.com/oauth2/token"
+CALLBACK_TIMEOUT_SECONDS = 300  # 5 分鐘,留給使用者反應時間
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 _SKILL_ROOT = os.path.dirname(_SCRIPT_DIR)
 _PERSONAS_DIR = os.path.join(_SKILL_ROOT, "personas")
+
+_callback_done = threading.Event()
 
 
 class _CallbackHandler(http.server.BaseHTTPRequestHandler):
@@ -48,22 +51,27 @@ class _CallbackHandler(http.server.BaseHTTPRequestHandler):
         params = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
         if "code" in params:
             _CallbackHandler.received_code = params["code"][0]
-            body = b"<h2>OK. You can close this tab and return to Gemini.</h2>"
+            body = "<h2>授權成功,可以關閉此分頁回 Gemini 了。</h2>".encode("utf-8")
             self.send_response(200)
         elif "error" in params:
             _CallbackHandler.received_error = params["error"][0]
-            body = f"<h2>Error: {params['error'][0]}</h2>".encode()
+            body = f"<h2>授權失敗: {params['error'][0]}</h2>".encode("utf-8")
             self.send_response(400)
         else:
-            body = b"<h2>No code in callback.</h2>"
+            body = "<h2>沒有收到授權碼,請回到 Gemini 重試。</h2>".encode("utf-8")
             self.send_response(400)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+        _callback_done.set()
 
     def log_message(self, *_args, **_kwargs):
         pass
+
+
+# Reduce stale-socket conflicts on rapid retries
+socketserver.TCPServer.allow_reuse_address = True
 
 
 def _config_path(slug: str) -> str:
@@ -71,12 +79,24 @@ def _config_path(slug: str) -> str:
 
 
 def main(slug: str) -> None:
+    # Reset class-level state so re-invocations in the same process see no stale data
+    _CallbackHandler.received_code = None
+    _CallbackHandler.received_error = None
+    _callback_done.clear()
+
     cfg_path = _config_path(slug)
     if not os.path.exists(cfg_path):
         sys.exit(
             f"錯誤: 找不到 {cfg_path}。\n"
             "請先到 marketing-content-factory 模組 1 完成基本資料收集。"
         )
+
+    # Lock down config file perms early — it already contains WP_CLIENT_SECRET
+    try:
+        os.chmod(cfg_path, 0o600)
+    except OSError:
+        pass  # best-effort; chmod failure shouldn't block the auth flow
+
     with open(cfg_path, "r", encoding="utf-8") as f:
         cfg = json.load(f)
 
@@ -100,28 +120,42 @@ def main(slug: str) -> None:
         }
     )
 
-    server = socketserver.TCPServer((REDIRECT_HOST, REDIRECT_PORT), _CallbackHandler)
+    try:
+        server = socketserver.TCPServer((REDIRECT_HOST, REDIRECT_PORT), _CallbackHandler)
+    except OSError as e:
+        sys.exit(
+            f"錯誤: 連接埠 {REDIRECT_PORT} 被占用了 ({e})。\n"
+            "請先關閉其他在用 8080 的程式 (例如 Docker、其他 dev server),再重試。"
+        )
+
     threading.Thread(target=server.serve_forever, daemon=True).start()
 
     print(f"開啟瀏覽器進行授權:\n  {auth_url}\n")
     print("如果瀏覽器沒自動開啟,複製上面網址手動開。")
     webbrowser.open(auth_url)
-    print("等待瀏覽器回呼到 http://localhost:8080/callback ... (Ctrl+C 中止)")
+    print(
+        f"等待瀏覽器回呼到 http://localhost:{REDIRECT_PORT}/callback ... "
+        f"(最多等 {CALLBACK_TIMEOUT_SECONDS // 60} 分鐘,Ctrl+C 中止)"
+    )
 
     try:
-        while (
-            _CallbackHandler.received_code is None
-            and _CallbackHandler.received_error is None
-        ):
-            pass
+        got_response = _callback_done.wait(timeout=CALLBACK_TIMEOUT_SECONDS)
     finally:
         server.shutdown()
         server.server_close()
+
+    if not got_response:
+        sys.exit(
+            f"授權超時 ({CALLBACK_TIMEOUT_SECONDS} 秒沒收到回呼)。\n"
+            "請重跑這個腳本並儘快在瀏覽器按 Approve。"
+        )
 
     if _CallbackHandler.received_error:
         sys.exit(f"OAuth 錯誤: {_CallbackHandler.received_error}")
 
     code = _CallbackHandler.received_code
+    if not code:
+        sys.exit("錯誤: 沒收到授權碼,請重試。")
     print("拿到授權碼,換 access token 中...")
 
     resp = requests.post(
