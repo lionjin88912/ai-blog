@@ -31,6 +31,19 @@ from typing import Any
 import requests
 
 
+def _classify_seo_plugin(namespaces: list[str]) -> str | None:
+    """Map a list of REST namespaces to a known SEO plugin slug.
+
+    Only what we actually integrate is named; everything else returns None.
+    """
+    ns_set = {n.lower() for n in namespaces}
+    if "rank-math/v1" in ns_set:
+        return "rankmath"
+    if "yoast/v1" in ns_set:
+        return "yoast"
+    return None
+
+
 def detect_site(url: str) -> dict[str, Any]:
     parsed = urllib.parse.urlparse(url if "://" in url else f"https://{url}")
     host = (parsed.hostname or url).lower().strip().rstrip("/")
@@ -44,6 +57,8 @@ def detect_site(url: str) -> dict[str, Any]:
         "plan": None,
         "is_atomic": None,
         "wp_json_exposed": False,
+        "namespaces": [],
+        "seo_plugin": None,
         "recommended_auth": None,
         "api_base": None,
         "notes": [],
@@ -54,6 +69,14 @@ def detect_site(url: str) -> dict[str, Any]:
         r = requests.get(f"{scheme}://{host}/wp-json/", timeout=15, allow_redirects=True)
         if r.ok and "application/json" in r.headers.get("Content-Type", ""):
             info["wp_json_exposed"] = True
+            try:
+                root = r.json()
+                ns = root.get("namespaces") or []
+                if isinstance(ns, list):
+                    info["namespaces"] = [str(n) for n in ns]
+                    info["seo_plugin"] = _classify_seo_plugin(info["namespaces"])
+            except (ValueError, TypeError):
+                pass
     except requests.RequestException as e:
         info["notes"].append(f"wp-json probe failed: {e}")
 
