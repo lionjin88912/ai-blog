@@ -24,6 +24,43 @@ from datetime import date
 from urllib.parse import urlparse
 
 _SCRIPT_RE = re.compile(r"<script\b[^>]*>.*?</script>", re.DOTALL | re.IGNORECASE)
+_HEAD_RE = re.compile(r"<head\b[^>]*>(.*?)</head>", re.DOTALL | re.IGNORECASE)
+_TITLE_RE = re.compile(r"<title\b[^>]*>(.*?)</title>", re.DOTALL | re.IGNORECASE)
+_META_NAMED_RE = re.compile(
+    r'<meta\b[^>]*\bname\s*=\s*["\']([^"\']+)["\'][^>]*\bcontent\s*=\s*["\']([^"\']*)["\'][^>]*/?>',
+    re.IGNORECASE,
+)
+
+
+def _extract_seo_from_html(content: str) -> dict[str, str | None]:
+    """Pull title / description / keywords out of the article HTML <head>.
+
+    Returns a dict with keys "title", "description", "keywords" — each value
+    is a stripped string or None when the corresponding tag is missing /
+    empty. The function is permissive: works with partial heads, missing
+    tags, single- or double-quoted attributes, and meta tags in either
+    name-then-content or content-then-name attribute order (the named regex
+    only catches name-first; content-first falls back to the swap pattern).
+    """
+    seo: dict[str, str | None] = {"title": None, "description": None, "keywords": None}
+    if not content:
+        return seo
+
+    head_match = _HEAD_RE.search(content)
+    head = head_match.group(1) if head_match else content  # fall back to whole doc
+
+    title_match = _TITLE_RE.search(head)
+    if title_match:
+        title = title_match.group(1).strip()
+        seo["title"] = title or None
+
+    for name, value in _META_NAMED_RE.findall(head):
+        key = name.strip().lower()
+        if key in ("description", "keywords") and seo[key] is None:
+            stripped = value.strip()
+            seo[key] = stripped or None
+
+    return seo
 
 
 def _strip_script_tags(content: str) -> str:
