@@ -20,6 +20,7 @@ import sys
 import os
 import json
 from datetime import date
+from urllib.parse import urlparse
 
 # --- 路徑與設定 ---
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -145,7 +146,6 @@ def _post_via_oauth2(persona_slug, cfg, title, content, status):
         )
         return
 
-    from urllib.parse import urlparse
     host = urlparse(site_url).hostname or site_url
 
     endpoint = f"https://public-api.wordpress.com/wp/v2/sites/{host}/posts"
@@ -161,14 +161,33 @@ def _post_via_oauth2(persona_slug, cfg, title, content, status):
         print(f"\n☢️ 發生錯誤: {str(e)}")
         return
 
-    if response.status_code == 401:
+    if _looks_like_invalid_token(response):
         print(
-            "\n❌ 失敗:401 未授權。Access token 可能已被撤銷或 client secret 已重置。\n"
+            "\n❌ 失敗:Access token 已失效或被撤銷(可能是使用者去後台 Disconnect, "
+            "或 client secret 已重置)。\n"
             f"請重新跑授權: python3 .gemini/skills/persona-writer/scripts/wp_oauth_setup.py {persona_slug}"
         )
         return
 
     _report_response(persona_slug, site_url, title, response)
+
+
+def _looks_like_invalid_token(response):
+    """Detect "token revoked / unauthorized" across the variants public-api emits.
+
+    Catches 401 (any body) and 403 with a body that mentions invalid/revoked/
+    unauthorized tokens — which is what wp.com returns when scope mismatches
+    or the user has Disconnected the OAuth app.
+    """
+    if response.status_code == 401:
+        return True
+    if response.status_code == 403:
+        body = (response.text or "").lower()
+        return any(
+            marker in body
+            for marker in ("unauthorized", "invalid_token", "authorization_required")
+        )
+    return False
 
 
 def _report_response(persona_slug, target_url, title, response):
