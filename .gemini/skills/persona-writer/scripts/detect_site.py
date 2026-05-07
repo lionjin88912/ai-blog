@@ -34,6 +34,8 @@ import requests
 def detect_site(url: str) -> dict[str, Any]:
     parsed = urllib.parse.urlparse(url if "://" in url else f"https://{url}")
     host = (parsed.hostname or url).lower().strip().rstrip("/")
+    # Honor caller's scheme so plain-HTTP internal sites are probed correctly
+    scheme = parsed.scheme if parsed.scheme in ("http", "https") else "https"
     is_wpcom_subdomain = host.endswith(".wordpress.com")
 
     info: dict[str, Any] = {
@@ -49,7 +51,7 @@ def detect_site(url: str) -> dict[str, Any]:
 
     # Probe 1: /wp-json/ on the site itself (most reliable signal)
     try:
-        r = requests.get(f"https://{host}/wp-json/", timeout=15, allow_redirects=True)
+        r = requests.get(f"{scheme}://{host}/wp-json/", timeout=15, allow_redirects=True)
         if r.ok and "application/json" in r.headers.get("Content-Type", ""):
             info["wp_json_exposed"] = True
     except requests.RequestException as e:
