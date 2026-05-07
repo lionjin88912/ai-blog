@@ -19,8 +19,22 @@ from requests.auth import HTTPBasicAuth
 import sys
 import os
 import json
+import re
 from datetime import date
 from urllib.parse import urlparse
+
+_SCRIPT_RE = re.compile(r"<script\b[^>]*>.*?</script>", re.DOTALL | re.IGNORECASE)
+
+
+def _strip_unsafe_html(content: str) -> str:
+    """Remove <script>...</script> blocks before POSTing.
+
+    WordPress REST API strips <script> tags as a security default (wp.com is
+    especially strict). When the tag boundaries are removed, the JSON inside
+    leaks into the visible body. Strip them here so the leak never happens —
+    JSON-LD belongs in <head> via an SEO plugin, not in post content.
+    """
+    return _SCRIPT_RE.sub("", content)
 
 # --- 路徑與設定 ---
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -88,6 +102,8 @@ def post_to_wordpress(persona_slug, title, content, status="draft"):
         print(f"錯誤: 人格「{persona_slug}」尚未設定 WordPress 連線。")
         print("請到 marketing-content-factory 模組 1 設定該人格的 WordPress。")
         return
+
+    content = _strip_unsafe_html(content)
 
     auth_method = cfg.get("auth_method")
     if auth_method == "application_password":
