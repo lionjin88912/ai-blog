@@ -1,0 +1,8 @@
+{
+  "auth_method": "oauth2",
+  "WP_URL": "https://yoursite.wordpress.com",
+  "WP_CLIENT_ID": "<from developer.wordpress.com/apps/>",
+  "WP_CLIENT_SECRET": "<from same dashboard, keep private>",
+  "WP_ACCESS_TOKEN": "<filled in automatically by wp_oauth_setup.py>",
+  "WP_BLOG_ID": "<filled in automatically by wp_oauth_setup.py>"
+}
