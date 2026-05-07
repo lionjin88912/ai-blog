@@ -87,8 +87,12 @@ def _build_seo_meta(seo_plugin: str | None, seo: dict[str, str | None]) -> dict[
     first_keyword = keyword_parts[0] if keyword_parts else None
 
     if seo_plugin == "rankmath":
+        # rank_math_focus_keyword is a single-string field in the free version;
+        # multi-keyword scoring is Pro-only via rank_math_focus_keyword_2/3/...
+        # Stuffing all keywords into the single field makes scoring search for
+        # the literal joined string and find it nowhere → score 0.
         if first_keyword:
-            meta["rank_math_focus_keyword"] = ",".join(keyword_parts)
+            meta["rank_math_focus_keyword"] = first_keyword
         if description:
             meta["rank_math_description"] = description
         if title:

@@ -34,10 +34,14 @@ import requests
 def _classify_seo_plugin(namespaces: list[str]) -> str | None:
     """Map a list of REST namespaces to a known SEO plugin slug.
 
+    Verified live against rankmath.com (the canonical source) — the actual
+    namespace is `rankmath/v1` with NO hyphen. The hyphenated form is
+    accepted as a defensive alias in case any fork/version uses it.
+
     Only what we actually integrate is named; everything else returns None.
     """
     ns_set = {n.lower() for n in namespaces}
-    if "rank-math/v1" in ns_set:
+    if "rankmath/v1" in ns_set or "rank-math/v1" in ns_set:
         return "rankmath"
     if "yoast/v1" in ns_set:
         return "yoast"
