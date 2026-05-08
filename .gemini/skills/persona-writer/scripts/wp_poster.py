@@ -63,51 +63,6 @@ def _extract_seo_from_html(content: str) -> dict[str, str | None]:
     return seo
 
 
-def _build_seo_meta(seo_plugin: str | None, seo: dict[str, str | None]) -> dict[str, str]:
-    """Map extracted SEO fields to WP REST `meta` keys for the plugin in use.
-
-    seo_plugin   = "rankmath" | "yoast" | None
-    seo          = {"title", "description", "keywords"} (any may be None)
-
-    Returns a dict suitable to merge into `payload["meta"]` on the post call.
-    Empty dict when there's no plugin we know about, or no SEO data to send.
-
-    Focus keyword is taken as the FIRST entry of comma-separated keywords;
-    Rank Math accepts the full comma string (it stores them as a list);
-    Yoast free version stores a single keyword, so we send the first only.
-    """
-    meta: dict[str, str] = {}
-    if not seo_plugin or not seo:
-        return meta
-
-    title = seo.get("title")
-    description = seo.get("description")
-    keywords_raw = seo.get("keywords") or ""
-    keyword_parts = [k.strip() for k in keywords_raw.split(",") if k.strip()]
-    first_keyword = keyword_parts[0] if keyword_parts else None
-
-    if seo_plugin == "rankmath":
-        # rank_math_focus_keyword is a single-string field in the free version;
-        # multi-keyword scoring is Pro-only via rank_math_focus_keyword_2/3/...
-        # Stuffing all keywords into the single field makes scoring search for
-        # the literal joined string and find it nowhere → score 0.
-        if first_keyword:
-            meta["rank_math_focus_keyword"] = first_keyword
-        if description:
-            meta["rank_math_description"] = description
-        if title:
-            meta["rank_math_title"] = title
-    elif seo_plugin == "yoast":
-        if first_keyword:
-            meta["_yoast_wpseo_focuskw"] = first_keyword
-        if description:
-            meta["_yoast_wpseo_metadesc"] = description
-        if title:
-            meta["_yoast_wpseo_title"] = title
-
-    return meta
-
-
 def _strip_script_tags(content: str) -> str:
     """Remove <script>...</script> blocks before POSTing to WordPress.
 
@@ -196,15 +151,13 @@ def post_to_wordpress(persona_slug, title, content, status="draft"):
         print("請到 marketing-content-factory 模組 1 設定該人格的 WordPress。")
         return
 
-    seo = _extract_seo_from_html(content)
-    seo_meta = _build_seo_meta(cfg.get("seo_plugin"), seo)
     content = _strip_script_tags(content)
 
     auth_method = cfg.get("auth_method")
     if auth_method == "application_password":
-        _post_via_app_password(persona_slug, cfg, title, content, status, seo_meta)
+        _post_via_app_password(persona_slug, cfg, title, content, status)
     elif auth_method == "oauth2":
-        _post_via_oauth2(persona_slug, cfg, title, content, status, seo_meta)
+        _post_via_oauth2(persona_slug, cfg, title, content, status)
     else:
         print(
             f"錯誤: 人格「{persona_slug}」的 wp-config.json 沒有指定 auth_method, "
@@ -212,7 +165,7 @@ def post_to_wordpress(persona_slug, title, content, status="draft"):
         )
 
 
-def _post_via_app_password(persona_slug, cfg, title, content, status, seo_meta=None):
+def _post_via_app_password(persona_slug, cfg, title, content, status):
     """Self-hosted WP / Atomic — Basic Auth + Application Password."""
     url = cfg.get("WP_URL", "")
     user = cfg.get("WP_USER", "")
@@ -227,8 +180,6 @@ def _post_via_app_password(persona_slug, cfg, title, content, status, seo_meta=N
 
     endpoint = f"{url.rstrip('/')}/wp-json/wp/v2/posts"
     payload = {"title": title, "content": content, "status": status}
-    if seo_meta:
-        payload["meta"] = seo_meta
 
     try:
         response = requests.post(
@@ -244,7 +195,7 @@ def _post_via_app_password(persona_slug, cfg, title, content, status, seo_meta=N
     _report_response(persona_slug, url, title, response)
 
 
-def _post_via_oauth2(persona_slug, cfg, title, content, status, seo_meta=None):
+def _post_via_oauth2(persona_slug, cfg, title, content, status):
     """WordPress.com hosted — OAuth2 Bearer token via public-api.wordpress.com."""
     site_url = cfg.get("WP_URL", "")
     access_token = cfg.get("WP_ACCESS_TOKEN", "")
@@ -263,8 +214,6 @@ def _post_via_oauth2(persona_slug, cfg, title, content, status, seo_meta=None):
 
     endpoint = f"https://public-api.wordpress.com/wp/v2/sites/{host}/posts"
     payload = {"title": title, "content": content, "status": status}
-    if seo_meta:
-        payload["meta"] = seo_meta
     headers = {
         "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json",
