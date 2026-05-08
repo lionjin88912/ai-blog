@@ -227,9 +227,9 @@ python3 .gemini/skills/persona-writer/scripts/detect_site.py <使用者剛剛給
 ```
 
 讀腳本輸出的 JSON,看 `seo_plugin` 欄位:
-- `"rankmath"` → 該人格站台裝了 Rank Math。把 `seo_plugin` 寫回 wp-config.json,以後 wp_poster 自動帶 Rank Math meta。
+- `"rankmath"` → 站台裝了 Rank Math。把 `"seo_plugin": "rankmath"` 寫回 wp-config.json(**目前只是記錄,未來 companion plugin 上線後 wp_poster 會吃這個欄位自動帶 meta;現階段不影響發文行為**)。
 - `"yoast"` → 站台裝了 Yoast SEO。同上,改成 `"seo_plugin": "yoast"`。
-- `null` → 沒有支援的 SEO plugin。也把 `null` 寫回(明確記錄已偵測過),以後 wp_poster 不會帶 meta,只發乾淨內文。
+- `null` → 沒有支援的 SEO plugin,也把 `null` 寫回(明確記錄已偵測過)。
 
 **注意:wp.com 託管站匿名探測拿不到 namespaces**(seo_plugin 會是 null),這是正常的 — wp.com 用戶要不要裝 SEO plugin 由本人決定,不算錯誤。
 
@@ -241,7 +241,7 @@ python3 .gemini/skills/persona-writer/scripts/detect_site.py <使用者剛剛給
 
 > ✅ 部落格設定完成!以後直接跟我說「用<人格中文名>寫一篇 XXX」就會發到這個部落格。
 >
-> 順便偵測到你站上裝了 **Rank Math / Yoast**,我先記下來。**目前 SEO 標題 / 描述 / 焦點關鍵字還是要你手動到 wp-admin 補** — 因為 WordPress 預設不允許外部工具直接寫 SEO 欄位。我們之後會補完整自動帶(需要你裝一個小程式),會跟你說。
+> 順便偵測到你站上裝了 **Rank Math / Yoast**,我先記下來。**SEO 欄位現階段還是要你發文後到 wp-admin 手動補**,等之後升級到付費方案我再幫你解開自動填的功能。
 
 或:
 

@@ -32,6 +32,12 @@ _META_NAMED_RE = re.compile(
 )
 
 
+# RESERVED: not currently called. Will be re-wired into post_to_wordpress
+# once the companion mu-plugin / Code Snippets bootstrap registers SEO meta
+# keys with show_in_rest=true. See commit 55e3ec5 for revert rationale.
+# When re-wiring: rank_math_focus_keyword takes only the FIRST comma-split
+# entry (Rank Math free version stores a single string; multi-focus is
+# Pro-only via rank_math_focus_keyword_2/3/...).
 def _extract_seo_from_html(content: str) -> dict[str, str | None]:
     """Pull title / description / keywords out of the article HTML <head>.
 
