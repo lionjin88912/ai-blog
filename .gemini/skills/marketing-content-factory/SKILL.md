@@ -241,15 +241,17 @@ python3 .gemini/skills/persona-writer/scripts/detect_site.py <使用者剛剛給
 
 > ✅ 部落格設定完成!以後直接跟我說「用<人格中文名>寫一篇 XXX」就會發到這個部落格。
 >
-> 順便偵測到你站上裝了 **Rank Math / Yoast**,以後我發文會自動幫你帶 SEO 標題、描述、焦點關鍵字,你不用手動補 ✨
+> 順便偵測到你站上裝了 **Rank Math / Yoast**,我先記下來。**目前 SEO 標題 / 描述 / 焦點關鍵字還是要你手動到 wp-admin 補** — 因為 WordPress 預設不允許外部工具直接寫 SEO 欄位。我們之後會補完整自動帶(需要你裝一個小程式),會跟你說。
 
 或:
 
 > ✅ 部落格設定完成!以後直接跟我說「用<人格中文名>寫一篇 XXX」就會發到這個部落格。
 >
-> 注意:你站上看起來沒裝 SEO plugin(像 Rank Math 或 Yoast)。我發文還是會發,只是 SEO 標題 / 描述 / 結構化資料那塊不會自動帶,需要你之後手動到 wp-admin 補,或是裝個 SEO plugin(推薦 Rank Math,免費版功能就夠)。
+> 注意:你站上看起來沒裝 SEO plugin(像 Rank Math 或 Yoast)。我發文還是會發,但 SEO 標題 / 描述 / 結構化資料那塊不會有任何加強。建議升級到 wp.com 付費方案後裝 Rank Math(免費版功能就夠),或如果是自架站直接裝。
 
 最後加一句:「剛才那篇測試草稿你可以登進後台直接刪掉。」
+
+> 💡 **內部備註**(不要對使用者念):自動帶 SEO meta 這條路目前在 vanilla WordPress 上**會 silent no-op**(WP 核心 REST 不收未註冊的 meta key)。預計補上 companion mu-plugin / Code Snippets bootstrap 後解鎖。在那之前,Module 1 偵測到 plugin 只記下,不假裝會自動帶。
 
 ---
 
@@ -570,14 +572,13 @@ python3 .gemini/skills/persona-writer/scripts/detect_site.py <使用者剛剛給
 | `403 unauthorized_client` 在換 token 階段 | **OAuth app 的 Type 選錯**(選成 Native 而不是 Web)。請使用者重新到 developer.wordpress.com/apps/ 開新的 app,Type 一定要選 **Web**。 |
 | `wp_oauth_setup.py` 卡在「等待瀏覽器回呼」很久沒動 | 八成是使用者**忘了在瀏覽器按 Approve**,或公司網路擋 localhost。先請他切回那個 wordpress.com 授權分頁,確認有沒有出現「同意授權」按鈕、按下去。如果按了還是沒回應,可能是公司防火牆擋 `localhost:8080`,請工程師處理。 |
 
-### Rank Math / Yoast SEO meta 相關
+### SEO meta 相關
 
 | 使用者反映 | 翻譯 + 解法 |
 |---|---|
-| 「文章發出去了但 Rank Math 後台看 SEO 分數還是空的 / `--`」 | **wp-config.json 沒記到 `seo_plugin`,或記到的是 `null`**。重跑模組 1 的「步驟 2 偵測 SEO plugin」即可(只跑那一步不用整套重來)。 |
-| 「focus keyword 應該是 X 但 Rank Math 顯示 Y」 | wp_poster 把文章 HTML `<meta name="keywords">` 第一個值當 focus keyword。請使用者確認模組 2 的寫文章流程**有沒有把焦點關鍵字放在 keywords 第一位**(persona-writer SOP 規定要)。如果有錯,直接到 wp-admin 文章編輯頁手動改 Rank Math meta。 |
-| 「我換了 SEO plugin(從 Yoast 換到 Rank Math 之類),新文章 meta 沒帶對」 | 重跑模組 1 步驟 2 偵測一次,wp-config.json 的 `seo_plugin` 會更新成新的;舊文章不會回填,使用者要手動處理。 |
-| 「網站根本沒裝 plugin 但發文很正常」 | 沒問題,`seo_plugin: null` 時 wp_poster 不送 meta,純發內文。SEO 結構化資料就靠 wp.com 內建那一點,或之後使用者自己裝 plugin 補回。 |
+| 「文章發出去了但 Rank Math / Yoast 後台 SEO 分數還是空的」 | **這是目前的已知限制,不是 bug**。WordPress 預設不允許外部工具直接寫 plugin 的 SEO 欄位,所以我們發文不會帶 SEO meta。請使用者**進 wp-admin 文章編輯頁手動補**(focus keyword、meta description、SEO title)。未來補完 companion mu-plugin / Code Snippets bootstrap 之後會自動帶。 |
+| 「網站根本沒裝 plugin 但發文很正常」 | 沒問題,`seo_plugin: null` 時 wp_poster 純發內文。SEO 結構化資料就靠 wp.com / 主題內建那一點。建議使用者升級方案後裝 Rank Math(免費版功能就夠)。 |
+| 「我換了 SEO plugin」 | 重跑模組 1 步驟 2 偵測一次,wp-config.json 的 `seo_plugin` 會更新成新的(目前只用作記錄,未來自動帶上線後會吃這欄位)。 |
 
 如果上表都對不上,跟使用者說:
 > 這個訊息我沒看過,你把完整錯誤訊息整段貼給我,我研究一下再回你。
