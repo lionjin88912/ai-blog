@@ -17,13 +17,14 @@ function Check-Tool {
 }
 
 Write-Host "=== Core Tools Status ==="
+$root = Join-Path $PSScriptRoot "..\..\..\.."
 Check-Tool "curl" "curl.exe"
-Check-Tool "uv" "E:\gh_gemini_ai_cli\sandbox\uv\uv.exe"
-Check-Tool "python" "E:\gh_gemini_ai_cli\sandbox\python\cpython-3.12.10-windows-x86_64-none\python.exe"
-Check-Tool "cat" "E:\gh_gemini_ai_cli\sandbox\git\usr\bin\cat.exe"
+Check-Tool "uv" (Join-Path $root "sandbox\uv\uv.exe")
+Check-Tool "python" (Join-Path $root "sandbox\python\cpython-3.12.10-windows-x86_64-none\python.exe")
+Check-Tool "cat" (Join-Path $root "sandbox\git\usr\bin\cat.exe")
 
 Write-Host "`n=== Environment Check ==="
-$mingwPath = "E:\gh_gemini_ai_cli\sandbox\git\mingw64"
+$mingwPath = Join-Path $root "sandbox\git\mingw64"
 if (Test-Path $mingwPath) {
     Write-Host "MINGW64: [FOUND] at $mingwPath" -ForegroundColor Green
 } else {
