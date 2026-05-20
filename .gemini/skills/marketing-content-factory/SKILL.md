@@ -258,7 +258,7 @@ python3 .gemini/skills/persona-writer/scripts/detect_site.py <使用者剛剛給
 ## 📝 模組 2:寫一篇新文章的完整流程
 
 > 目標:從一句話的主題,到 WordPress 草稿,全程透過「逐步引導 + 人工 check」的對話節奏完成。
-> 行銷使用者只在 7 個明確節點介入(Step 1 收輸入 + Step 3-7 共 5 個 check),其餘 silent。
+> 行銷使用者只在 6 個明確節點介入(Step 1 收輸入 + Step 3-7 共 5 個 check),其餘 silent。
 > **中間態存在每篇文章自己的 draft.json**(在該人格的 `articles/` 資料夾裡),session 中斷可以接續、發布成功後刪掉。
 
 ### 流程總覽
@@ -708,8 +708,8 @@ Step 7 通過 A(使用者說「好」)後,進入此段。**對使用者只說一
 | WordPress 發布失敗 | 8d draft 不刪 + 對使用者報錯 + 對照模組 4 FAQ;使用者說「再試一次發布」可從 draft 接續 |
 | 使用者中途說「不寫了 / 放棄」 | 二次確認「確定放棄這篇『<topic>』嗎?草稿會被清掉」→ 是 → `os.remove draft-*.json` |
 | 使用者中途要換人格 | 二次確認「之前寫的 H1/H3/... 會作廢,真的要換 OOO 嗎?」→ 是 → 刪舊 draft → 走新的 Step 1A(新 draft) |
-| Step 1 前:該人格沒設定 WordPress | Step 1A-3 中止 → 引導模組 1 |
-| Step 1 前:人格不存在 | Step 1A-2 列出可用人格、或引導模組 5 新增 |
+| Step 1 前:該人格沒設定 WordPress | Step 1A 的 A-3「確認 WordPress 已設定」那步中止 → 引導模組 1 |
+| Step 1 前:人格不存在 | Step 1A 的 A-2「確認人格」那步列出可用人格、或引導模組 5 新增 |
 
 ---
 
