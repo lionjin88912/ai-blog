@@ -281,7 +281,7 @@ Step 8 自動結尾段 (silent ~30 秒)
 
 ### Step 1 — 收輸入(包含「偵測既有 draft」分支)
 
-**先掃既有 draft**:在問使用者任何問題前,掃 `.gemini/skills/persona-writer/personas/*/articles/draft-*.json`。
+**先掃既有 draft**:在問使用者任何問題前,掃 `.gemini/skills/persona-writer/personas/` 下**每個非 `_template`** 子資料夾的 `articles/draft-*.json`。
 
 - **掃到 0 份** → 走「新文章」路徑(下方 Step 1A)
 - **掃到 ≥1 份** → 走「偵測到既有 draft」路徑(下方 Step 1B)
@@ -322,7 +322,7 @@ Step 8 自動結尾段 (silent ~30 秒)
 執行 `write_file`:
 - **路徑**:`.gemini/skills/persona-writer/personas/<persona-slug>/articles/draft-<YYYYMMDD>-<HHMM>-<topic-slug>.json`
   - `YYYYMMDD-HHMM` 用當下時間,**HHMM 防同主題同日撞檔**
-  - `topic-slug`:把主題簡化成 kebab-case 英數(中文主題用拼音 / 簡化英譯),例:`sun-moon-lake`、`tainan-old-city`、`ho-chi-minh-coffee`
+  - `topic-slug`:把主題簡化成 kebab-case 英數。**優先策略**:如果主題含可識別的英文地名 / 知名詞,用該英文(`sun-moon-lake`、`tainan-old-city`、`ho-chi-minh-coffee`)。**Fallback**:純中文且無慣用英文對應時,用 hanyu pinyin、空格改連字號、不加聲調(`taibei-meishi`、`riyuetan-mansu`)。**同主題務必每次產生相同 slug**(避免兩種策略混用)。
 - **內容**:
 ```json
 {
@@ -353,6 +353,8 @@ Step 8 自動結尾段 (silent ~30 秒)
 >
 > 要繼續哪一篇?還是放棄、開新的?
 
+> **內部提示**(對 Gemini,不要念給使用者):N 換成實際份數;只有 1 份時改寫成「1 篇」(不保留 N)、且只用一個 bullet,不要列舉省略號;只有 1 份時的「要繼續哪一篇」改成「要繼續這篇還是放棄重寫?」
+
 **stage 中文對照表**(對使用者顯示用):
 - `init` → 「剛開始」
 - `research_done` → 「資料查完」
@@ -363,7 +365,14 @@ Step 8 自動結尾段 (silent ~30 秒)
 - `full_text_done` → 「全文已確認(待發布)」
 
 使用者選擇:
-- **「繼續第 X 篇」** → 讀那份 draft,依 `stage` 跳到對應步驟(`init` → Step 2、`research_done` → Step 3、`h1_done` → Step 4、`h3_done` → Step 5、`h2_done` → Step 6、`faq_done` → Step 7、`full_text_done` → Step 8)
+- **「繼續第 X 篇」** → 讀那份 draft,依 `stage` 跳到對應步驟:
+  - `init` → Step 2
+  - `research_done` → Step 3
+  - `h1_done` → Step 4
+  - `h3_done` → Step 5
+  - `h2_done` → Step 6
+  - `faq_done` → Step 7
+  - `full_text_done` → Step 8
 - **「放棄全部、開新的」** → 二次確認「我幫你把那 N 份草稿都刪掉,確定嗎?」→ 是 → `os.remove` 刪掉那些 draft → 走 Step 1A
 - **「放棄第 X 篇,但繼續第 Y 篇」** → 二次確認後刪 X,走「繼續 Y」流程
 - **混合需求**:逐項問清楚,不要批次猜
