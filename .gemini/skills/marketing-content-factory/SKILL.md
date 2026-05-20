@@ -371,6 +371,7 @@ Step 8 自動結尾段 (silent ~30 秒)
 - `h2_done` → 「H2 大綱已確認」
 - `faq_done` → 「FAQ 已確認」
 - `full_text_done` → 「全文已確認(待發布)」
+- `published` → 「已發布(暫存檔異常殘留 — 通常 8e os.remove 失敗時才會出現)」
 
 使用者選擇:
 - **「繼續第 X 篇」**(只有 1 份時,簡短回應「繼續」「好」「繼續這篇」也算)→ 讀那份 draft,依 `stage` 跳到對應步驟:
@@ -381,6 +382,7 @@ Step 8 自動結尾段 (silent ~30 秒)
   - `h2_done` → Step 6
   - `faq_done` → Step 7
   - `full_text_done` → Step 8
+  - `published` → 異常殘留 draft,直接 `os.remove` 該檔 + 告訴使用者「這篇之前已經發布過了,我把殘留的暫存檔清掉了」+ 走新的 Step 1A
 - **「放棄全部、開新的」** → 二次確認「我幫你把那 N 份草稿都刪掉,確定嗎?」→ 是 → `os.remove` 刪掉那些 draft → 走 Step 1A
 - **「放棄第 X 篇,但繼續第 Y 篇」** → 二次確認後刪 X,走「繼續 Y」流程
 - **混合需求**:逐項問清楚,不要批次猜
