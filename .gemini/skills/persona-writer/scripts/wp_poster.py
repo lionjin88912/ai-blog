@@ -264,23 +264,27 @@ def _looks_like_invalid_token(response):
 def _report_response(persona_slug, target_url, title, response):
     if response.status_code == 201:
         data = response.json()
+        post_id = data.get("id")
+        link = data.get("link", "")
+        # 後台編輯 URL pattern 適用所有 WP 站台(自架 / wp.com hosted / Atomic)
+        admin_edit_url = f"{target_url.rstrip('/')}/wp-admin/post.php?post={post_id}&action=edit"
+
         print("\n✅ 成功！文章已建立。")
         print(f"人格: {persona_slug}")
         print(f"目標部落格: {target_url}")
-        print(f"文章 ID: {data.get('id')}")
-        link = data.get("link", "")
-        print(f"文章連結: {link}")
+        print(f"文章 ID: {post_id}")
+        print(f"後台編輯連結: {admin_edit_url}")
+        print(f"前台連結: {link}")
         print(f"目前狀態: {data.get('status')}")
-        _append_published(persona_slug, title, link, data.get("id"))
+        _append_published(persona_slug, title, link, post_id)
 
-        # 自動開 WordPress 後台分頁讓使用者直接潤稿
+        # 自動開 WordPress 後台編輯分頁讓使用者直接潤稿
         # silent fail:無 GUI / 權限不夠不影響發布成功
-        if link:
-            try:
-                if webbrowser.open(link):
-                    print("🌐 已開啟 WordPress 後台分頁。")
-            except Exception:
-                pass
+        try:
+            if webbrowser.open(admin_edit_url):
+                print("🌐 已開啟 WordPress 後台編輯分頁。")
+        except Exception:
+            pass
     else:
         print(f"\n❌ 失敗。狀態碼: {response.status_code}")
         print(f"回應內容: {response.text}")
