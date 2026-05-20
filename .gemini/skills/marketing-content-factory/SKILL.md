@@ -257,66 +257,116 @@ python3 .gemini/skills/persona-writer/scripts/detect_site.py <使用者剛剛給
 
 ## 📝 模組 2:寫一篇新文章的完整流程
 
-> 目標:從一句話的主題,到 WordPress 草稿,全程不需要使用者懂任何技術。
+> 目標:從一句話的主題,到 WordPress 草稿,全程透過「逐步引導 + 人工 check」的對話節奏完成。
+> 行銷使用者只在 7 個明確節點介入(Step 1 收輸入 + Step 3-7 共 5 個 check),其餘 silent。
+> **中間態存在每篇文章自己的 draft.json**(在該人格的 `articles/` 資料夾裡),session 中斷可以接續、發布成功後刪掉。
 
-### 引導對話順序
+### 流程總覽
 
-**Step A — 收主題與人格**
+```
+Step 1 收主題 + 關鍵字 + 人格   ← 使用者必填
+Step 2 資料檢索 (silent)
+Step 3 H1 標題     ── check ✋
+Step 4 H3 小標     ── check ✋   (先發散)
+Step 5 H2 大綱     ── check ✋   (再歸納)
+Step 6 FAQ 3 題    ── check ✋
+Step 7 全文        ── check ✋   (純文字)
+Step 8 自動結尾段 (silent ~30 秒)
+       ├── 找圖
+       ├── 組 HTML
+       ├── SEO 自評
+       ├── wp_poster.py 發 draft
+       └── 刪 draft.json
+```
+
+### Step 1 — 收輸入(包含「偵測既有 draft」分支)
+
+**先掃既有 draft**:在問使用者任何問題前,掃 `.gemini/skills/persona-writer/personas/*/articles/draft-*.json`。
+
+- **掃到 0 份** → 走「新文章」路徑(下方 Step 1A)
+- **掃到 ≥1 份** → 走「偵測到既有 draft」路徑(下方 Step 1B)
+
+#### Step 1A — 新文章
+
+**A-1. 收主題與關鍵字群**
 
 問:
-> 好的,我們來寫文章 ✍️ 兩件事先確認一下:
+> 好的,我們來寫文章 ✍️ 先請你給我兩件事(請分兩行貼,或一句話講完都行):
 >
-> 1. 文章主題是什麼?(例:日月潭兩天一夜慢旅、米其林餐廳推薦…)
-> 2. 用哪一位「人格」寫?
+> 1. 文章主題(例:日月潭兩天一夜慢旅、米其林餐廳推薦…)
+> 2. 你希望這篇主打的「關鍵字群」(用逗號分隔,例:日月潭慢旅, 湖畔散策, 私房茶席)
+
+驗收條件:
+- 主題:必須有,空字串或「隨便」「都行」要追問
+- 關鍵字群:必須有 **至少 1 個**;使用者完全沒給時追問「你想讓 Google 搜這篇時用什麼字?隨便給 1-3 個就好」
+
+**A-2. 確認人格**
+
+掃 `.gemini/skills/persona-writer/personas/` 排除 `_template`:
+- **只有一位人格**:直接帶他用該位(例:目前只有林太就用林太),口頭跟使用者預告「我會用『林太』寫,沒問題吧?」
+- **多位人格 + 使用者話裡有指定**(例「用王老闆寫」):照他說的
+- **多位人格 + 使用者沒指定**:列出所有人格的 `display_name` + `topic`,讓他挑
+
+**A-3. 確認該人格的 WordPress 已設定**
+
+檢查 `.gemini/skills/persona-writer/personas/<slug>/wp-config.json` 是否存在。
+- 不存在 → 中止 Step 1,引導去模組 1:「『<人格中文名>』還沒設定過 WordPress 部落格,我們先花 2 分鐘設定好」
+- 存在 → 繼續 A-4
+
+**A-4. 建立 draft.json**
+
+跟使用者預告:
+> 收到主題「<主題>」+ 關鍵字「<關鍵字 1, 2, 3>」+ 用「<人格中文名>」寫。
+> 我先幫你建一份草稿筆記、上網查資料(大約 15 秒),然後就會把標題提給你看。
+
+執行 `write_file`:
+- **路徑**:`.gemini/skills/persona-writer/personas/<persona-slug>/articles/draft-<YYYYMMDD>-<HHMM>-<topic-slug>.json`
+  - `YYYYMMDD-HHMM` 用當下時間,**HHMM 防同主題同日撞檔**
+  - `topic-slug`:把主題簡化成 kebab-case 英數(中文主題用拼音 / 簡化英譯),例:`sun-moon-lake`、`tainan-old-city`、`ho-chi-minh-coffee`
+- **內容**:
+```json
+{
+  "persona_slug": "<persona-slug>",
+  "topic": "<使用者給的主題原文>",
+  "keywords": ["<關鍵字 1>", "<關鍵字 2>", "..."],
+  "stage": "init",
+  "created_at": "<YYYY-MM-DDTHH:MM:SS>",
+  "research": null,
+  "h1": null,
+  "h3_subheadings": null,
+  "h2_outline": null,
+  "faq": null,
+  "full_text": null
+}
+```
+
+接著進入 Step 2(資料檢索)。
+
+#### Step 1B — 偵測到既有 draft
+
+掃到既有 draft 後,把每份 draft 的 `topic`、`stage`、`created_at`、`persona_slug` 讀出來,對使用者說:
+
+> 你之前還有 N 篇寫到一半的草稿:
+>   - 「<topic 1>」(<persona 中文名>,停在 <stage 中文> 階段,<created_at 日期>)
+>   - 「<topic 2>」(<persona 中文名>,停在 <stage 中文> 階段,<created_at 日期>)
+>   - …
 >
-> (Gemini 同步去掃 `.gemini/skills/persona-writer/personas/` 底下的資料夾,排除 `_template`,把每個資料夾的 `persona.md` 的 `display_name` 跟 `topic` 列出來。例如目前會列:
->    - 🌸 **林太** — 中高齡熟齡慢旅、文化深度旅遊
->
-> 如果只有一位,直接推薦該人格。)
->
-> 如果不知道選誰,我幫你挑最適合的。
+> 要繼續哪一篇?還是放棄、開新的?
 
-**Step B — 確認該人格的 WordPress 已設定**
+**stage 中文對照表**(對使用者顯示用):
+- `init` → 「剛開始」
+- `research_done` → 「資料查完」
+- `h1_done` → 「H1 標題已確認」
+- `h3_done` → 「H3 小標已確認」
+- `h2_done` → 「H2 大綱已確認」
+- `faq_done` → 「FAQ 已確認」
+- `full_text_done` → 「全文已確認(待發布)」
 
-檢查 `.gemini/skills/persona-writer/personas/<persona-slug>/wp-config.json` 是否存在(每個人格各自有設定卡)。
-- 不存在 → 告訴使用者「『<人格中文名>』還沒設定過 WordPress 部落格,先花 2 分鐘設定好」,引導到模組 1(指定該人格)。
-- 存在 → 繼續。
-
-**Step C — 跟使用者預告流程**
-
-說一次完整流程,讓使用者心裡有底(把「<人格名>」替換成實際選定的人格):
-> 接下來我會幫你做這幾件事,大概 2-3 分鐘:
->
-> 1. 上網查資料(歷史背景、交通、特色)
-> 2. 找 3-4 張合法可用的圖片
-> 3. 用「<人格名>」的口吻寫文章 + 排版
-> 4. 做 SEO 優化(讓 Google 更容易找到)
-> 5. 存成草稿丟到 WordPress(**不會直接公開**,你檢查完再按發布)
->
-> 開始囉~
-
-**Step D — 委派給 persona-writer 執行**
-
-呼叫 `persona-writer` skill,並傳入 **persona-slug**(就是該人格資料夾名稱,例如 `mrs-lin-slow-travel`)。`persona-writer` 會自己讀取對應的 `persona.md` 並套用該人格的口吻、SOP、SEO 風格、視覺偏好。
-
-> 內部執行細節(資料檢索、圖片 API、JSON-LD、發布腳本)請參考 `persona-writer/SKILL.md`,不要把這些細節念給使用者聽。
-
-**Step E — 完成後的回報**
-
-發布成功後,只跟使用者說這四件事:
-
-> ✅ 寫好囉!
->
-> 📄 標題:<文章標題>
-> 🔗 草稿連結:<WordPress 後台的編輯連結>
-> 🖼️ 用了 X 張圖、寫了約 X 字
-> 🎯 焦點關鍵字:<關鍵字>
->
-> 點上面連結進去後,你可以再潤稿,確認沒問題就按 WordPress 右上角的「發布」。
-
-**不要**把 HTML 原始碼、JSON-LD、SEO 評分細節貼給使用者看,他們不需要。
-
----
+使用者選擇:
+- **「繼續第 X 篇」** → 讀那份 draft,依 `stage` 跳到對應步驟(`init` → Step 2、`research_done` → Step 3、`h1_done` → Step 4、`h3_done` → Step 5、`h2_done` → Step 6、`faq_done` → Step 7、`full_text_done` → Step 8)
+- **「放棄全部、開新的」** → 二次確認「我幫你把那 N 份草稿都刪掉,確定嗎?」→ 是 → `os.remove` 刪掉那些 draft → 走 Step 1A
+- **「放棄第 X 篇,但繼續第 Y 篇」** → 二次確認後刪 X,走「繼續 Y」流程
+- **混合需求**:逐項問清楚,不要批次猜
 
 ## ⌨️ 模組 3:常用指令範例(複製貼上)
 
