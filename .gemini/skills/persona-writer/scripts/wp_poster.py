@@ -20,6 +20,7 @@ import sys
 import os
 import json
 import re
+import webbrowser
 from datetime import date
 from urllib.parse import urlparse
 
@@ -267,9 +268,19 @@ def _report_response(persona_slug, target_url, title, response):
         print(f"人格: {persona_slug}")
         print(f"目標部落格: {target_url}")
         print(f"文章 ID: {data.get('id')}")
-        print(f"文章連結: {data.get('link')}")
+        link = data.get("link", "")
+        print(f"文章連結: {link}")
         print(f"目前狀態: {data.get('status')}")
-        _append_published(persona_slug, title, data.get("link", ""), data.get("id"))
+        _append_published(persona_slug, title, link, data.get("id"))
+
+        # 自動開 WordPress 後台分頁讓使用者直接潤稿
+        # silent fail:無 GUI / 權限不夠不影響發布成功
+        if link:
+            try:
+                if webbrowser.open(link):
+                    print("🌐 已開啟 WordPress 後台分頁。")
+            except Exception:
+                pass
     else:
         print(f"\n❌ 失敗。狀態碼: {response.status_code}")
         print(f"回應內容: {response.text}")
