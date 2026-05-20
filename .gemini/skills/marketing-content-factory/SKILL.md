@@ -610,7 +610,7 @@ Step 7 通過 A(使用者說「好」)後,進入此段。**對使用者只說一
 
 #### 8a — 找圖(內部執行)
 
-從 draft 的 `topic` + `research` 萃取 **英文「城市+地點」** 關鍵字。命名規則:
+從 draft 的 `topic` + `research` 萃取 **英文「城市+地點」** 關鍵字(中英文映射沿用 Step 1A-4 的 `topic-slug` 策略:優先英文地名 / fallback hanyu pinyin)。命名規則:
 - ✅ 正確:`Sun Moon Lake,Ita Thao,Xiangshan Visitor Center`(每個都帶城市/地點全名)
 - ❌ 錯誤:`Lake,Ita Thao,Center`(模糊)
 
@@ -620,7 +620,7 @@ Step 7 通過 A(使用者說「好」)後,進入此段。**對使用者只說一
    - Windows 注意:若 `curl` 被 PowerShell alias 攔截,改用 `curl.exe`
 3. 從 API 回傳挑 **3-4 張**,**選圖原則依 persona.md 的「視覺風格偏好」**
 
-**失敗處理**:API 沒回應 / 圖數不足 4 張 → **不擋發布,改用無圖純文字版本繼續**,在 8d 結束的回報訊息加一行:`⚠️ 這次圖片 API 沒抓到圖,我先發純文字草稿,你可以到後台手動補圖`
+**失敗處理**:API 沒回應 / 圖數不足 4 張 → **不擋發布,改用無圖純文字版本繼續**,在 8d 結束的回報訊息加一行:`⚠️ 這次圖片服務沒抓到圖,我先發純文字草稿,你可以到後台手動補圖`
 
 #### 8b — 組完整 HTML(內部執行)
 
@@ -629,7 +629,7 @@ Step 7 通過 A(使用者說「好」)後,進入此段。**對使用者只說一
 **JSON-LD**:文末加 `application/ld+json`,含 `BlogPosting`(作者用 persona.display_name)+ `FAQPage`(對應 8a 階段的 FAQ)。
 > 注意:`wp_poster.py` 發文前會剝掉 `<script>` 標籤(避免 wp.com 把 JSON-LD 內容洩漏到內文)。**JSON-LD 只存在本地 HTML 檔,沒上 WordPress**,跟現有行為一致。
 
-**視覺整合**:從 `blog-visual-styles` 選用 2-3 種(雜誌封面、全景雙圖、圓形提示、背景引言),具體用哪幾種看 persona.md。每張 `<img>` 必有 `alt`(至少 1 張含焦點關鍵字)+ 圖片下方 `<figcaption>`(以該人格口吻撰寫)。
+**視覺整合**:從以下 4 種視覺排版風格選用 2-3 種 — 「雜誌封面」「全景雙圖」「圓形提示」「背景引言」(具體選哪幾種看該人格 `persona.md` 的「視覺風格偏好」段)。每張 `<img>` 必有 `alt`(至少 1 張含焦點關鍵字)+ 圖片下方 `<figcaption>`(以該人格口吻撰寫)。
 
 **內部連結**:讀 `personas/<slug>/published.json`(若存在),挑 1-2 篇主題相關的舊文章插入 link。**只連結同人格自己的舊文章**,不跨人格。
 
@@ -665,8 +665,8 @@ Step 7 通過 A(使用者說「好」)後,進入此段。**對使用者只說一
 
 **發布失敗**:
 - **draft.json 不刪**
-- 對使用者回報:「⚠️ 發布到 WordPress 沒通,錯誤訊息:<vstrip>。對照模組 4 FAQ 看怎麼處理」
-- draft 留著,使用者排錯後說「再試一次發布」可以從 draft 接續(讀 draft → 跳到 8a 或 8d,依失敗點而定)
+- 對使用者回報:「⚠️ 發布到 WordPress 沒通,錯誤訊息:`<wp_poster.py 印出的錯誤訊息原文>`。對照模組 4 FAQ 看怎麼處理」
+- draft 留著,使用者排錯後說「再試一次發布」可以從 draft 接續。**接續判斷**:重讀對應 persona 資料夾的 `articles/`,看有沒有本次主題的 `<YYYYMMDD>-<...>.html` 完整檔 — 有就跳 8d 直接重發、沒就從 8a 重抓圖再組
 
 #### 8e — 清掉 draft 暫存檔(只有發布成功才做)
 
