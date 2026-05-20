@@ -258,25 +258,28 @@ python3 .gemini/skills/persona-writer/scripts/detect_site.py <使用者剛剛給
 ## 📝 模組 2:寫一篇新文章的完整流程
 
 > 目標:從一句話的主題,到 WordPress 草稿,全程透過「逐步引導 + 人工 check」的對話節奏完成。
-> 行銷使用者只在 6 個明確節點介入(Step 1 收輸入 + Step 3-7 共 5 個 check),其餘 silent。
+> 行銷使用者只在 7 個明確節點介入(Step 1 收輸入 + Step 3-7 全文 + Step 9 預覽,共 6 個 check),其餘 silent。
 > **中間態存在每篇文章自己的 draft.json**(在該人格的 `articles/` 資料夾裡),session 中斷可以接續、發布成功後刪掉。
 
 ### 流程總覽
 
 ```
-Step 1 收主題 + 關鍵字 + 人格   ← 使用者必填
-Step 2 資料檢索 (silent)
-Step 3 H1 標題     ── check ✋
-Step 4 H3 小標     ── check ✋   (先發散)
-Step 5 H2 大綱     ── check ✋   (再歸納)
-Step 6 FAQ 3 題    ── check ✋
-Step 7 全文        ── check ✋   (純文字)
-Step 8 自動結尾段 (silent ~30 秒)
-       ├── 找圖
-       ├── 組 HTML
-       ├── SEO 自評
-       ├── wp_poster.py 發 draft
-       └── 刪 draft.json
+Step 1  收主題 + 關鍵字 + 人格   ← 使用者必填
+Step 2  資料檢索 (silent)
+Step 3  H1 標題     ── check ✋
+Step 4  H3 小標     ── check ✋   (先發散)
+Step 5  H2 大綱     ── check ✋   (再歸納)
+Step 6  FAQ 3 題    ── check ✋
+Step 7  全文        ── check ✋   (純文字)
+Step 8  組稿 (silent ~20 秒)
+        ├── 8a 找圖
+        ├── 8b 組 HTML
+        └── 8c SEO 自評
+Step 9  HTML 預覽   ── check ✋   (本地瀏覽器看實際排版)
+Step 10 發 + 清檔 (silent ~10 秒)
+        ├── 10a wp_poster.py 發 draft
+        ├── 10b 開 WP 後台分頁
+        └── 10c 清 draft.json
 ```
 
 ### Step 1 — 收輸入(包含「偵測既有 draft」分支)
@@ -370,8 +373,9 @@ Step 8 自動結尾段 (silent ~30 秒)
 - `h3_done` → 「H3 小標已確認」
 - `h2_done` → 「H2 大綱已確認」
 - `faq_done` → 「FAQ 已確認」
-- `full_text_done` → 「全文已確認(待發布)」
-- `published` → 「已發布(暫存檔異常殘留 — 通常 8e os.remove 失敗時才會出現)」
+- `full_text_done` → 「全文已確認(待組稿)」
+- `html_built` → 「排版已組好(待預覽確認)」
+- `published` → 「已發布(暫存檔異常殘留 — 通常 10c os.remove 失敗時才會出現)」
 
 使用者選擇:
 - **「繼續第 X 篇」**(只有 1 份時,簡短回應「繼續」「好」「繼續這篇」也算)→ 讀那份 draft,依 `stage` 跳到對應步驟:
@@ -382,6 +386,7 @@ Step 8 自動結尾段 (silent ~30 秒)
   - `h2_done` → Step 6
   - `faq_done` → Step 7
   - `full_text_done` → Step 8
+  - `html_built` → Step 9(直接讓使用者重新預覽組好的 HTML)
   - `published` → 異常殘留 draft,直接 `os.remove` 該檔 + 告訴使用者「這篇之前已經發布過了,我把殘留的暫存檔清掉了」+ 走新的 Step 1A
 - **「放棄全部、開新的」** → 二次確認「我幫你把那 N 份草稿都刪掉,確定嗎?」→ 是 → `os.remove` 刪掉那些 draft → 走 Step 1A
 - **「放棄第 X 篇,但繼續第 Y 篇」** → 二次確認後刪 X,走「繼續 Y」流程
@@ -641,11 +646,11 @@ A3: (120 字回答…)
 
 ---
 
-### Step 8 — 自動結尾段(全程 silent,~30 秒)
+### Step 8 — 組稿(silent,~15-20 秒)
 
-Step 7 通過 A(使用者說「好」)後,進入此段。**對使用者只說一句**:
+Step 7 全文通過 A 後,進入此段。**對使用者只說一句**:
 
-> 好,我來幫你組稿、找圖、發到 WordPress 草稿,大約 30 秒 ☕
+> 好,我先把圖找好、排版組好,大概 20 秒,完成會跳出來給你看 ☕
 
 之後不報「找圖中…」「排版中…」逐項進度,**只有失敗才講話**。
 
@@ -661,75 +666,132 @@ Step 7 通過 A(使用者說「好」)後,進入此段。**對使用者只說一
    - Windows 注意:若 `curl` 被 PowerShell alias 攔截,改用 `curl.exe`
 3. 從 API 回傳挑 **3-4 張**,**選圖原則依 persona.md 的「視覺風格偏好」**
 
-**失敗處理**:API 沒回應 / 圖數不足 4 張 → **不擋發布,改用無圖純文字版本繼續**,在 8d 結束的回報訊息加一行:`⚠️ 這次圖片服務沒抓到圖,我先發純文字草稿,你可以到後台手動補圖`
+**失敗處理**:API 沒回應 / 圖數不足 4 張 → **不擋 Step 9 預覽,改用無圖純文字版本繼續**,Step 9 對話結尾加一行:`⚠️ 這次圖片服務沒抓到圖,先用純文字版預覽,要的話到 WordPress 後台手動補圖`
 
 #### 8b — 組完整 HTML(內部執行)
 
 從 draft 取出 `h1` / `h2_outline` / `h3_subheadings` / `faq` / `full_text` 組裝。HTML 骨架嚴格依 `.gemini/skills/persona-writer/SKILL.md` 的 HTML 骨架規範(`<!DOCTYPE html>`、`<head>` 含 title/description/keywords meta、`<body>` 含內容 + 圖片、結尾 JSON-LD)。
 
-**JSON-LD**:文末加 `application/ld+json`,含 `BlogPosting`(作者用 persona.display_name)+ `FAQPage`(對應 8a 階段的 FAQ)。
-> 注意:`wp_poster.py` 發文前會剝掉 `<script>` 標籤(避免 wp.com 把 JSON-LD 內容洩漏到內文)。**JSON-LD 只存在本地 HTML 檔,沒上 WordPress**,跟現有行為一致。
+**JSON-LD**:文末加 `application/ld+json`,含 `BlogPosting`(作者用 persona.display_name)+ `FAQPage`(對應 FAQ)。
+> 注意:`wp_poster.py` 發文前會剝掉 `<script>` 標籤(避免 wp.com 把 JSON-LD 內容洩漏到內文)。**JSON-LD 只存在本地 HTML 檔,沒上 WordPress**,跟現有行為一致。**Step 9 預覽看到的本地 HTML 含 JSON-LD,使用者實際發布後的 WP 草稿不含 — 這個差異不重要,使用者主要是看排版+圖+文字**。
 
 **視覺整合**:從以下 4 種視覺排版風格選用 2-3 種 — 「雜誌封面」「全景雙圖」「圓形提示」「背景引言」(具體選哪幾種看該人格 `persona.md` 的「視覺風格偏好」段)。每張 `<img>` 必有 `alt`(至少 1 張含焦點關鍵字)+ 圖片下方 `<figcaption>`(以該人格口吻撰寫)。
-
-> **8a 失敗時的純文字 fallback**:`8a` 沒抓到任何圖時,**跳過所有需要圖的排版**(雜誌封面、全景雙圖、背景引言),只用純文字結構(`<h1>`/`<h2>`/`<h3>`/`<p>` + 「圓形提示」這種不依賴圖片的視覺元素)。仍要組完整 HTML 骨架(title/description/keywords meta、body 內容、JSON-LD),只是 `<img>` 為 0 張。
 
 **內部連結**:讀 `personas/<slug>/published.json`(若存在),挑 1-2 篇主題相關的舊文章插入 link。**只連結同人格自己的舊文章**,不跨人格。
 
 **外部連結**:至少 1 個指向權威來源(景點官網、維基百科)。
 
+**存檔**:`write_file` 到 `.gemini/skills/persona-writer/personas/<slug>/articles/<YYYYMMDD>-<location>-<topic>.html`(用 deterministic 路徑,沿用 Step 1A-4 的 topic-slug 規則)。
+
 #### 8c — SEO 結構自我檢查(LLM 自評,不用程式 lint)
 
 組好 HTML 後,Gemini 自己讀一遍,檢查:
 
-- [ ] 焦點關鍵字密度 0.5–1.5%(從 draft.keywords[0] 取焦點關鍵字)
-- [ ] 焦點關鍵字有出現在:title、description、第一段、≥2 個 H2、≥1 張 alt(**若 8a 失敗無圖片,「≥1 張 alt」改為視為通過**)
+- [ ] 焦點關鍵字密度 0.5–1.5%(從 `draft.keywords[0]` 取焦點關鍵字)
+- [ ] 焦點關鍵字有出現在:title、description、第一段、≥2 個 H2、≥1 張 alt
 - [ ] H1 只有一個
 - [ ] H2 ≥ 3 個
 - [ ] 每段 ≤ 150 字
-- [ ] 每張 `<img>` 都有描述性 alt、≥1 張 alt 含焦點關鍵字(**若 8a 失敗無圖片,此項視為通過**)
+- [ ] 每張 `<img>` 都有描述性 alt、≥1 張 alt 含焦點關鍵字(無圖時自動跳過 alt 兩項)
 - [ ] 過渡詞使用率 ≥ 30%(「此外」「值得一提的是」「不過」「換句話說」…)
 
-**不通過**:Gemini 自己修。**連修 3 次還過不了** → 直接發出去,在 8d 結束的回報加一行:`⚠️ SEO 結構檢查有幾項沒達標,你可以到後台調整`
+**不通過**:Gemini 自己修並重寫 HTML 檔。**連修 3 次還過不了** → 直接帶到 Step 9,Step 9 對話結尾加警示:`⚠️ SEO 結構檢查有幾項沒達標,你預覽時可以順便注意一下`
 
-#### 8d — 存 HTML + 發 wp_poster.py(內部執行)
+完成 8a/8b/8c 後 → read draft → `stage = "html_built"` → write_file → 進 Step 9。
+
+---
+
+### Step 9 — HTML 預覽 check ✋
+
+組好的 HTML 已存在 `personas/<slug>/articles/<YYYYMMDD>-<location>-<topic>.html`(deterministic 路徑)。
+
+**執行**:
+1. 取得 HTML 檔的絕對路徑(`os.path.abspath`)
+2. 用 shell 指令開瀏覽器分頁:`python3 -c "import webbrowser; webbrowser.open('file://<absolute path>')"`
+3. **若 webbrowser 開不了(無 GUI / 權限)**:silent fail,流程繼續,只多依賴使用者手動點連結
+
+**對話格式**(沿用通用三段式 + reasoning prefix):
+
+```
+**Step 9 / HTML 預覽**
+我幫你開好瀏覽器分頁了 👀 文字、圖、版面實際呈現都在那邊 ──
+
+📄 預覽連結(若分頁沒自動開,複製貼到瀏覽器網址列):
+   `file://<absolute path>`
+
+看 OK 嗎?要發 WordPress 草稿,還是有什麼想改?
+```
+
+> (若 8a 圖失敗加一行 `⚠️ 這次圖片服務沒抓到圖...`)
+> (若 8c SEO 沒過加一行 `⚠️ SEO 結構檢查有幾項沒達標...`)
+
+意圖分類(沿用 A/B/C/D + 模糊回應):
+- **A 接受**(「好」「OK」「沒問題」「發吧」「就這個」)→ 進 Step 10
+- **B 覆寫**:Step 9 階段**不適用**(使用者不太可能直接貼一份新 HTML)。若收到看起來是覆寫的內容,引導去 C
+- **C 重生**(細分 4 種,Gemini 依語意分流):
+  - 「換圖」「圖不對」「圖太少 / 太多」「想要不同風格的圖」→ 重跑 8a + 8b(重新組稿,然後再開預覽)
+  - 「版面」「排版」「亂掉」「圖位置不對」→ 重跑 8b(用既有圖、重新排)
+  - 「文字」「文不對」「某段太長 / 太短」「結尾改一下」→ **回 Step 7**(全文重寫,重新走 8 → 9)
+  - 「SEO」「關鍵字密度」「H 標數量」→ 重跑 8c(重檢、必要時微調 HTML)
+- **D 中斷指令**(「不寫了」「換主題」「換人格」)→ 跳到結尾錯誤表
+
+> **重生時 stage 處理**:
+> - 換圖 / 改排版 / SEO → stage 維持 `html_built`(重組 HTML 後再 user check)
+> - 改文字 → stage 回 `faq_done`(因為要重生全文,接 Step 7),全文確認後再走 Step 8
+
+**通過 A 後**:無 draft 寫入(stage 還是 `html_built`),直接進 Step 10。
+
+---
+
+### Step 10 — 發 + 清檔(silent,~10 秒)
+
+Step 9 使用者通過 A 後進入此段。**對使用者只說一句**:
+
+> OK,我發 WordPress 草稿 + 順便幫你開後台分頁,大概 10 秒。
+
+#### 10a — wp_poster.py 發 draft(內部執行)
 
 執行:
-1. `write_file`:`.gemini/skills/persona-writer/personas/<slug>/articles/<YYYYMMDD>-<location>-<topic>.html`(用最終定型的 HTML)
-2. shell:`python3 .gemini/skills/persona-writer/scripts/wp_poster.py <persona-slug> "<H1 標題>" "<HTML 檔路徑>" draft`
+```
+python3 .gemini/skills/persona-writer/scripts/wp_poster.py <persona-slug> "<H1 標題>" "<已存的 HTML 檔路徑>" draft
+```
 
 **強制 `draft`**。除非使用者**在 Step 1 就明說「直接公開」**,否則一律 draft。
 
 `wp_poster.py` 內部會:
 - 依 `wp-config.json` 的 `auth_method` 走 Application Password 或 OAuth2
 - 剝掉 `<script>` 標籤再發
-- 成功時自動 append `published.json`(同人格)
+- **發布成功時自動 `webbrowser.open()` 開 WordPress 後台分頁**(本 iteration 同步加入的功能)
+- 自動 append `published.json`(同人格)
 - 失敗時印 `❌ 失敗。狀態碼: ...`
 
 **發布失敗**:
-- **draft.json 不刪**
+- **draft.json 不刪**,stage 維持 `html_built`(下次 resume 重走 Step 9)
 - 對使用者回報:「⚠️ 發布到 WordPress 沒通,錯誤訊息:`<wp_poster.py 印出的錯誤訊息原文>`。對照模組 4 FAQ 看怎麼處理」
-- draft 留著,使用者排錯後說「再試一次發布」可以從 draft 接續。**接續判斷**:重讀對應 persona 資料夾的 `articles/`,看有沒有本次主題的 `<YYYYMMDD>-<...>.html` 完整檔 — 有就跳 8d 直接重發、沒就從 8a 重抓圖再組
+- draft 留著,使用者排錯後說「再試一次發布」可以從 draft 接續
 
-#### 8e — 清掉 draft 暫存檔(只有發布成功才做)
+#### 10b — 開 WordPress 後台分頁(由 wp_poster.py 內部執行)
+
+10a 階段 `wp_poster.py` 印 `✅ 成功` 時,**腳本內部已 webbrowser.open(後台編輯連結)**,Gemini 這邊不用再做。
+
+#### 10c — 清掉 draft 暫存檔(只有發布成功才做)
 
 **確認 wp_poster 印 `✅ 成功`** 之後執行:
+- read draft → `stage = "published"` → write_file(短暫狀態,僅在 os.remove 失敗時殘留)
 - `os.remove(".gemini/skills/persona-writer/personas/<slug>/articles/draft-<...>.json")`
 
 最終 HTML(`<YYYYMMDD>-<location>-<topic>.html`)**保留**,當本地完成品備份。
 
 #### 最終回報訊息(發布成功後)
 
-格式:
-
-> ✅ 寫好囉!
+> ✅ 寫好囉!**我已經幫你開好 WordPress 後台編輯分頁了** 👀
 >
 > 📄 標題:`<H1>`
-> 🔗 草稿連結:`<WordPress 後台編輯連結>`
+> 🔗 後台編輯連結:`<WordPress wp-admin 編輯網址>`(若分頁沒自動跳,複製這個連結)
 > 🖼️ 用了 X 張圖、寫了約 X 字
 > 🎯 焦點關鍵字:`<keywords[0]>`
 >
-> 點上面連結進去後,你可以再潤稿,確認沒問題就按 WordPress 右上角的「發布」。
+> 過去後可以再潤稿,確認沒問題就按 WordPress 右上角的「發布」。
 
 (若 8a 圖失敗 / 8c SEO 沒達標,**結尾加警示行**)
 
@@ -748,7 +810,10 @@ Step 7 通過 A(使用者說「好」)後,進入此段。**對使用者只說一
 | 跨多階段回退(H2 階段要改 H1) | 走「跨階段回退」,引導「乾脆從頭來?還是只改最近一階段?」 |
 | 找圖 API 失敗 | 8a 不擋發布,純文字版繼續 + 結尾加警示行 |
 | SEO 自評連修 3 次不過 | 8c 直接發 + 結尾加警示行 |
-| WordPress 發布失敗 | 8d draft 不刪 + 對使用者報錯 + 對照模組 4 FAQ;使用者說「再試一次發布」可從 draft 接續 |
+| WordPress 發布失敗 | 10a draft 不刪 + 對使用者報錯 + 對照模組 4 FAQ;使用者說「再試一次發布」可從 draft 接續 |
+| Step 9 預覽 webbrowser.open() 開不了瀏覽器 | silent fail,Step 9 對話 quote 內的 `file://` 路徑使用者可以手動複製到瀏覽器網址列開 |
+| Step 9 使用者要「換圖 / 換排版」 | 重跑 8a + 8b(換圖)或只 8b(換排版),stage 維持 `html_built`,重新跑 Step 9 |
+| Step 9 使用者要「改文字」 | stage 回 `faq_done`,重走 Step 7 全文 → Step 8 → Step 9 |
 | 使用者中途說「不寫了 / 放棄」 | 二次確認「確定放棄這篇『<topic>』嗎?草稿會被清掉」→ 是 → `os.remove draft-*.json` |
 | 使用者中途要換人格 | 二次確認「之前寫的 H1/H3/... 會作廢,真的要換 OOO 嗎?」→ 是 → 刪舊 draft → 走新的 Step 1A(新 draft) |
 | 使用者中途要換主題(同人格繼續寫別篇) | 二次確認「之前寫的『<舊主題>』要作廢,改寫『<新主題>』嗎?」→ 是 → 刪舊 draft → 走新的 Step 1A(新主題,同人格,新 draft) |
