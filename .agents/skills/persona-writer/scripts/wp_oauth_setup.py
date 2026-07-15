@@ -2,7 +2,7 @@
 wp_oauth_setup.py — One-time interactive OAuth2 setup for a wordpress.com persona.
 
 Reads partial config:
-    .gemini/skills/persona-writer/personas/<slug>/wp-config.json
+    .agents/skills/persona-writer/personas/<slug>/wp-config.json
 must contain at least: WP_URL, WP_CLIENT_ID, WP_CLIENT_SECRET (auth_method=oauth2).
 
 Flow:

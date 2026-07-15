@@ -24,6 +24,14 @@ import webbrowser
 from datetime import date
 from urllib.parse import urlparse
 
+# 解決 Windows 主控台 cp950 編碼不支援 Unicode 字符的錯誤
+if sys.platform.startswith('win'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
+
 _SCRIPT_RE = re.compile(r"<script\b[^>]*>.*?</script>", re.DOTALL | re.IGNORECASE)
 _HEAD_RE = re.compile(r"<head\b[^>]*>(.*?)</head>", re.DOTALL | re.IGNORECASE)
 _TITLE_RE = re.compile(r"<title\b[^>]*>(.*?)</title>", re.DOTALL | re.IGNORECASE)
@@ -160,6 +168,22 @@ def post_to_wordpress(persona_slug, title, content, status="draft"):
 
     content = _strip_script_tags(content)
 
+    # Extract only the body content to prevent leading blank spaces and template wrappers from showing up
+    body_match = re.search(r"<body\b[^>]*>(.*?)</body>", content, re.DOTALL | re.IGNORECASE)
+    if body_match:
+        content = body_match.group(1)
+
+    # Clean up leading/trailing whitespaces and newlines
+    content = content.strip()
+
+    # Remove any leading <h1> heading (since WordPress already displays the post title automatically)
+    content = re.sub(r"^\s*<h1\b[^>]*>.*?</h1>", "", content, flags=re.DOTALL | re.IGNORECASE)
+    content = content.strip()
+
+    # Remove any raw markdown headers (like ## or ###) or carriage returns that might have leaked into the HTML
+    content = re.sub(r"(?m)^\s*#+\s*", "", content)
+    content = re.sub(r"<p>\s*#+\s*", "<p>", content)
+
     auth_method = cfg.get("auth_method")
     if auth_method == "application_password":
         _post_via_app_password(persona_slug, cfg, title, content, status)
@@ -213,7 +237,7 @@ def _post_via_oauth2(persona_slug, cfg, title, content, status):
     if not access_token:
         print(
             "錯誤: 該人格還沒拿到 access token。請執行:\n"
-            f"  python3 .gemini/skills/persona-writer/scripts/wp_oauth_setup.py {persona_slug}"
+            f"  python3 .agents/skills/persona-writer/scripts/wp_oauth_setup.py {persona_slug}"
         )
         return
 
@@ -236,7 +260,7 @@ def _post_via_oauth2(persona_slug, cfg, title, content, status):
         print(
             "\n❌ 失敗:Access token 已失效或被撤銷(可能是使用者去後台 Disconnect, "
             "或 client secret 已重置)。\n"
-            f"請重新跑授權: python3 .gemini/skills/persona-writer/scripts/wp_oauth_setup.py {persona_slug}"
+            f"請重新跑授權: python3 .agents/skills/persona-writer/scripts/wp_oauth_setup.py {persona_slug}"
         )
         return
 

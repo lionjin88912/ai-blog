@@ -106,7 +106,7 @@ gemini
 ## 📁 進階:檔案放在哪(你不用碰)
 
 ```
-.gemini/skills/
+.agents/skills/
 ├── marketing-content-factory/         ← 我(對話入口)
 └── persona-writer/                    ← 通用寫手
     ├── scripts/

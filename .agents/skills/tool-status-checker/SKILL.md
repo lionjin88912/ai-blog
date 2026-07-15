@@ -13,7 +13,7 @@ This skill checks whether all required binary tools are correctly installed and 
 2. Run the appropriate diagnostic script.
 3. Parse the output for each tool's status and version.
 4. **Python venv 自動建立**：若 `<project_root>/.venv` 不存在，用 uv 建立並安裝 Python 3.12。
-5. **掃描 SKILL scripts 並安裝依賴**：掃描 `.gemini/skills/*/scripts/*.py`，解析 `import` 取得第三方套件，用 uv 安裝。
+5. **掃描 SKILL scripts 並安裝依賴**：掃描 `.agents/skills/*/scripts/*.py`，解析 `import` 取得第三方套件，用 uv 安裝。
 6. Update `TOOLS.md` at the project root with the results and today's date.
 
 ## Step 1: Run Diagnostic Script
@@ -27,7 +27,7 @@ powershell.exe -ExecutionPolicy Bypass -File <project_root>\.gemini\skills\tool-
 ### macOS / Linux (Bash)
 
 ```bash
-bash <project_root>/.gemini/skills/tool-status-checker/scripts/check_tools.sh
+bash <project_root>/.agents/skills/tool-status-checker/scripts/check_tools.sh
 ```
 
 ## Step 2: Python venv 自動建立
@@ -52,7 +52,7 @@ sandbox/uv/uv venv .venv --python 3.12
 
 ## Step 3: 掃描 SKILL scripts 並安裝依賴
 
-掃描 `.gemini/skills/*/scripts/*.py` 中的 `import` 語句，找出第三方套件（排除標準庫），用 uv 安裝到 `.venv`。
+掃描 `.agents/skills/*/scripts/*.py` 中的 `import` 語句，找出第三方套件（排除標準庫），用 uv 安裝到 `.venv`。
 
 ### 判斷邏輯
 

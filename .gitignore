@@ -20,7 +20,7 @@ ai-sandbox-*
 # ============================================================
 # 歸檔與舊版
 # ============================================================
-.gemini/_archive/
+.agents/_archive/
 
 # ============================================================
 # 臨時與執行時產生的檔案
@@ -28,7 +28,7 @@ ai-sandbox-*
 # 圖片 API 用的暫存請求
 request.json
 # 寫文章產生的 HTML 草稿(統一放在各人格資料夾下)
-.gemini/skills/persona-writer/personas/*/articles/
+.agents/skills/persona-writer/personas/*/articles/
 # 空的 workspace 暫存
 workspace/
 

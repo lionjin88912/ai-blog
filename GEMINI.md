@@ -32,6 +32,8 @@
   ✓ marketing-content-factory  — 行銷內容對話入口(你會直接跟它說話)
   ✓ persona-writer             — 通用寫手 SOP(幕後執行)
   ✓ tool-status-checker        — 環境檢查
+  ✓ wordpress-com-rest-api     — WordPress.com REST API 操作
+  ✓ translate-zh-tw            — 繁中翻譯
 ```
 
 #### 2A-4. 把環境狀態記下來(memory)
@@ -108,3 +110,33 @@
       - 「幫我重新設定 WordPress 連線」
       - 「我之前寫過哪些文章？」
    ```
+---
+
+## 📂 專案結構 (Project Structure)
+
+本專案 = 行銷內容自動化(skills)+ AI Sandbox CLI 工具原始碼(sandbox-src),架構如下:
+
+```text
+/
+├── .agents/skills/        # 全部 agent skills(Antigravity CLI 會自動載入這裡)
+│   ├── marketing-content-factory/
+│   ├── persona-writer/    # 含 scripts/wp_poster.py 與 personas/<slug>/
+│   ├── tool-status-checker/
+│   ├── wordpress-com-rest-api/
+│   └── translate-zh-tw/
+├── sandbox-src/           # ai-sandbox 工具的 Go 原始碼
+│   ├── cmd/               # CLI 指令(cobra)
+│   ├── internal/
+│   │   ├── config/        # 設定檔處理
+│   │   ├── toolchain/     # Node/Python/Git/Antigravity CLI/Copilot/uv 下載安裝
+│   │   ├── web/           # 網頁終端(含 Launch Antigravity 按鈕)
+│   │   └── wizard/        # 互動式安裝選單
+│   ├── main.go / go.mod / Makefile / Dockerfile
+│   └── docker-compose.yml # 跨平台編譯
+├── ai-sandbox-*(.exe/.bat) # 編譯好的執行檔(業務雙擊入口)
+├── docs/                  # 專案文件(_archive/ 為歸檔的舊版 skill)
+├── GEMINI.md              # 本檔案,agent 啟動時自動載入
+└── HOWTO.md / BOOTSTRAP.md / README.md
+```
+
+**Skill 位置鐵則:skills 只放 `.agents/skills/` 一個地方。** 不要複製到其他路徑(歷史教訓:`.gemini/antigravity-cli/skills/`、`.antigravitycli/` 都是猜錯路徑的失敗複製,已清除)。
