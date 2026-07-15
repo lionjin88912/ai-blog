@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 )
 
 const (
@@ -28,6 +29,41 @@ func DefaultConfig() *Config {
 	return &Config{
 		WorkspacePath: filepath.Join(home, "workspace"),
 	}
+}
+
+// DataDir returns the per-user directory where the sandbox keeps everything it
+// generates: downloaded tools (sandbox/), skills (.agents/), workspace/, and
+// the seeded docs. Placing it here means the exe is a pure launcher — it can
+// live in Downloads and never scatters files next to itself.
+//
+//	Windows: %LOCALAPPDATA%\ai-sandbox
+//	macOS:   ~/Library/Application Support/ai-sandbox
+//	Linux:   $XDG_DATA_HOME/ai-sandbox  (or ~/.local/share/ai-sandbox)
+func DataDir() (string, error) {
+	const app = "ai-sandbox"
+	switch runtime.GOOS {
+	case "windows":
+		if la := os.Getenv("LOCALAPPDATA"); la != "" {
+			return filepath.Join(la, app), nil
+		}
+	case "darwin":
+		if home, err := os.UserHomeDir(); err == nil {
+			return filepath.Join(home, "Library", "Application Support", app), nil
+		}
+	default: // linux and others
+		if xdg := os.Getenv("XDG_DATA_HOME"); xdg != "" {
+			return filepath.Join(xdg, app), nil
+		}
+		if home, err := os.UserHomeDir(); err == nil {
+			return filepath.Join(home, ".local", "share", app), nil
+		}
+	}
+	// Fallback: user config dir (roaming on Windows) — still user-writable.
+	base, err := os.UserConfigDir()
+	if err != nil {
+		return "", fmt.Errorf("cannot determine data directory: %w", err)
+	}
+	return filepath.Join(base, app), nil
 }
 
 // ConfigDir returns the path to ~/.ai-sandbox.

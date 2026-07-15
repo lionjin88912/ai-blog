@@ -74,21 +74,23 @@ func main() {
 
 	// --- Double-click mode: start web server directly ---
 
-	// Change CWD to the exe's directory so "./sandbox" resolves correctly.
-	// If sandbox is not next to the exe, try the parent directory (e.g. exe in dist/).
-	if exePath, err := os.Executable(); err == nil {
-		exeDir := filepath.Dir(exePath)
-		_ = os.Chdir(exeDir)
-
-		sandboxCheck := filepath.Join(exeDir, "sandbox", "bin")
-		if _, err := os.Stat(sandboxCheck); os.IsNotExist(err) {
-			parentDir := filepath.Dir(exeDir)
-			parentCheck := filepath.Join(parentDir, "sandbox", "bin")
-			if _, err := os.Stat(parentCheck); err == nil {
-				_ = os.Chdir(parentDir)
-			}
-		}
+	// Everything the sandbox generates (tools, skills, workspace) lives in a
+	// per-user data directory, NOT next to the exe. This makes the exe a pure
+	// launcher: a business user can double-click it straight from Downloads and
+	// nothing scatters into that folder. cwd is set to the data dir so all the
+	// relative paths below (./sandbox, ./workspace, seed, the pty shell's cwd)
+	// resolve there.
+	dataDir, err := config.DataDir()
+	if err != nil {
+		log.Fatalf("Failed to resolve data directory: %v", err)
 	}
+	if err := os.MkdirAll(dataDir, 0o755); err != nil {
+		log.Fatalf("Create data directory %s: %v", dataDir, err)
+	}
+	if err := os.Chdir(dataDir); err != nil {
+		log.Fatalf("Enter data directory %s: %v", dataDir, err)
+	}
+	log.Printf("📁 資料夾: %s", dataDir)
 
 	// Auto-init config if not configured
 	workspacePath, _ := filepath.Abs("./workspace")

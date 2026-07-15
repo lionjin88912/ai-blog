@@ -2,11 +2,13 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 
+	"github.com/ai-sandbox/cli/internal/config"
 	"github.com/ai-sandbox/cli/internal/toolchain"
 	"github.com/spf13/cobra"
 )
@@ -30,6 +32,29 @@ Get started:
 	Version: version,
 }
 
+// enterDataDir moves into the per-user data directory (config.DataDir) unless
+// the user explicitly picked a --dir. This is what lets the exe live in
+// Downloads and act as a pure launcher: the .bat entry point runs `web`, which
+// lands here just like the double-click path in main.go, so nothing scatters
+// next to the exe.
+func enterDataDir(cmd *cobra.Command, args []string) error {
+	if rootCmd.PersistentFlags().Changed("dir") {
+		return nil // developer explicitly chose a sandbox location
+	}
+	dataDir, err := config.DataDir()
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(dataDir, 0o755); err != nil {
+		return fmt.Errorf("create data directory %s: %w", dataDir, err)
+	}
+	if err := os.Chdir(dataDir); err != nil {
+		return fmt.Errorf("enter data directory %s: %w", dataDir, err)
+	}
+	log.Printf("📁 資料夾: %s", dataDir)
+	return nil
+}
+
 // Execute runs the root command.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
@@ -39,6 +64,7 @@ func Execute() {
 }
 
 func init() {
+	rootCmd.PersistentPreRunE = enterDataDir
 	rootCmd.PersistentFlags().StringVarP(&sandboxDir, "dir", "d", "./sandbox", "Sandbox directory path")
 	rootCmd.PersistentFlags().StringVar(&shellFlag, "shell", "", "Shell to use in terminal (macOS/Linux only, e.g. zsh, /bin/fish)")
 }

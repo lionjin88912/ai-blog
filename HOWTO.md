@@ -2,14 +2,17 @@
 
 ## 🚀 推薦入口:Antigravity(agy)
 
-1. 雙擊 `ai-sandbox-windows-amd64.bat`(macOS 執行 `./ai-sandbox-darwin-arm64`)
+1. 直接雙擊 `ai-sandbox-windows-amd64.exe`(macOS 執行 `./ai-sandbox-darwin-arm64`)。**exe 放哪都行**(Downloads、桌面都可),它是純啟動器,不會在旁邊產生任何檔案
 2. 首次啟動會自動下載所有工具(Node.js、Antigravity CLI、Python、Git 等),約需 2-3 分鐘
 3. 瀏覽器開啟 Web Terminal 後,點畫面上的 **「Launch Antigravity」按鈕**
 4. 第一次會問「信任這個資料夾嗎?」→ 選**信任**(skills 才會載入)
 5. 在 agy 裡輸入 `/skills` 應看到 5 個能力(marketing-content-factory、persona-writer、tool-status-checker、wordpress-com-rest-api、translate-zh-tw)→ 直接開始說「我要寫一篇行銷文章」
 
-> Skills 一律放在專案的 `.agents/skills/`,Antigravity 自動載入,不需要手動複製到任何地方。
-> exe 內建出廠 skills:放到空資料夾雙擊也能用,第一次啟動會自動鋪好所有檔案(已存在的檔案絕不覆蓋)。
+> **所有資料存在固定的使用者資料夾**,不散在 exe 旁邊:
+> - Windows:`%LOCALAPPDATA%\ai-sandbox\`
+> - macOS:`~/Library/Application Support/ai-sandbox/`
+>
+> 裡面有 skills(`.agents/skills/`,Antigravity 自動載入)、下載的工具(`sandbox/`)、`workspace/`、`GEMINI.md`。**要整包清除就刪這個資料夾;換新版 exe 時這裡的資料原封不動**(skills 演化、帳密、發文紀錄全保留)。
 
 **出問題要回報?** 點網頁右上角「📦 匯出診斷包」,把下載的 zip 傳給工程師即可 — 包內**不含任何密碼**(帳密欄位一律遮罩)。
 
