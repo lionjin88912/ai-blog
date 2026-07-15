@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"path/filepath"
+	"strings"
 
 	"github.com/ai-sandbox/cli/internal/diag"
 	"github.com/ai-sandbox/cli/internal/seed"
@@ -47,6 +48,11 @@ func Serve(addr, sandboxDir, shellPath string, shellArgs, env []string, geminiFl
 		})
 	})
 	mux.HandleFunc("/api/diagnostic", func(w http.ResponseWriter, r *http.Request) {
+		// Block DNS-rebinding: only loopback Host values may pull the bundle.
+		if !isLoopbackHost(r.Host) {
+			http.Error(w, "forbidden host", http.StatusForbidden)
+			return
+		}
 		data, name, err := diag.BuildZip(workspaceDir, exeVersion)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -69,4 +75,20 @@ func Serve(addr, sandboxDir, shellPath string, shellArgs, env []string, geminiFl
 
 	log.Printf("Serving on %s", actualAddr)
 	return http.Serve(listener, mux)
+}
+
+// isLoopbackHost reports whether the request Host targets localhost/127.0.0.1,
+// defeating DNS-rebinding attempts to reach the diagnostic endpoint from a
+// malicious page (which would carry an attacker-controlled Host).
+func isLoopbackHost(host string) bool {
+	h := host
+	if i := strings.LastIndex(h, ":"); i != -1 {
+		h = h[:i]
+	}
+	h = strings.Trim(h, "[]")
+	if h == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(h)
+	return ip != nil && ip.IsLoopback()
 }

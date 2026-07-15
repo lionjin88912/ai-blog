@@ -12,6 +12,7 @@
 package seed
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"embed"
 	"fmt"
@@ -64,9 +65,10 @@ func LocalVersion(targetDir string) string {
 	return strings.TrimSpace(string(b))
 }
 
-// isProtected reports whether rel (slash-separated, relative to workspace
-// root) is persona user data that must never be overwritten.
-func isProtected(rel string) bool {
+// IsPersonaData reports whether rel (slash-separated, relative to workspace
+// root) is a user's persona (not the _template). Such files are never
+// overwritten by refresh and, once a workspace is seeded, never resurrected.
+func IsPersonaData(rel string) bool {
 	const personas = ".agents/skills/persona-writer/personas/"
 	if !strings.HasPrefix(rel, personas) {
 		return false
@@ -74,15 +76,20 @@ func isProtected(rel string) bool {
 	return !strings.HasPrefix(rel, personas+"_template/")
 }
 
-// isUserState reports runtime files that must never be written even when
-// missing (they are per-machine state, not factory content).
-func isUserState(rel string) bool {
+// IsUserState reports runtime files that are per-machine state, not factory
+// content: they are never embedded in the seed (seedsync skips them) and never
+// written by Materialize. Single source of truth shared with the seedsync tool
+// and the diag package.
+func IsUserState(rel string) bool {
 	base := filepath.Base(rel)
-	if base == "wp-config.json" || base == "published.json" {
+	if base == "wp-config.json" || base == "published.json" || base == "draft.json" {
 		return true
 	}
 	return strings.Contains(rel, "/articles/")
 }
+
+func isProtected(rel string) bool { return IsPersonaData(rel) }
+func isUserState(rel string) bool { return IsUserState(rel) }
 
 // Materialize lays the embedded seed into targetDir.
 //
@@ -93,6 +100,11 @@ func Materialize(targetDir string, refresh bool) (Stats, error) {
 	var st Stats
 	stamp := Version() + "-" + time.Now().Format("20060102-150405")
 	backupRoot := filepath.Join(targetDir, ".agents", "_backup", stamp)
+
+	// Once a workspace has been seeded, a missing protected (persona) file is
+	// a deliberate user deletion — never resurrect it. Missing SOP files are
+	// still restored so a broken workspace can self-heal.
+	alreadySeeded := LocalVersion(targetDir) != ""
 
 	err := fs.WalkDir(contentFS, contentRoot, func(p string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
@@ -106,23 +118,40 @@ func Materialize(targetDir string, refresh bool) (Stats, error) {
 			st.Skipped++
 			return nil
 		}
-
-		data, err := contentFS.ReadFile(p)
-		if err != nil {
-			return fmt.Errorf("read embedded %s: %w", rel, err)
-		}
 		target := filepath.Join(targetDir, filepath.FromSlash(rel))
 
-		existing, readErr := os.ReadFile(target)
+		info, statErr := os.Stat(target)
 		switch {
-		case os.IsNotExist(readErr):
+		case os.IsNotExist(statErr):
+			if alreadySeeded && isProtected(rel) {
+				st.Skipped++ // user deleted this persona file; respect it
+				return nil
+			}
+			data, err := contentFS.ReadFile(p)
+			if err != nil {
+				return fmt.Errorf("read embedded %s: %w", rel, err)
+			}
 			if err := writeFile(target, data); err != nil {
 				return err
 			}
 			st.Created = append(st.Created, rel)
-		case readErr != nil:
-			return fmt.Errorf("stat %s: %w", target, readErr)
-		case refresh && !isProtected(rel) && string(existing) != string(data):
+		case statErr != nil:
+			return fmt.Errorf("stat %s: %w", target, statErr)
+		case info.IsDir():
+			return fmt.Errorf("%s exists as a directory, expected a file", target)
+		case refresh && !isProtected(rel):
+			data, err := contentFS.ReadFile(p)
+			if err != nil {
+				return fmt.Errorf("read embedded %s: %w", rel, err)
+			}
+			existing, err := os.ReadFile(target)
+			if err != nil {
+				return fmt.Errorf("read %s: %w", target, err)
+			}
+			if bytes.Equal(existing, data) {
+				st.Skipped++
+				return nil
+			}
 			backup := filepath.Join(backupRoot, filepath.FromSlash(rel))
 			if err := writeFile(backup, existing); err != nil {
 				return fmt.Errorf("backup %s: %w", rel, err)
@@ -140,11 +169,11 @@ func Materialize(targetDir string, refresh bool) (Stats, error) {
 		return st, err
 	}
 
-	if len(st.Created) > 0 || len(st.Updated) > 0 {
-		marker := filepath.Join(targetDir, ".agents", ".seed-version")
-		if err := writeFile(marker, []byte(Version()+"\n")); err != nil {
-			return st, err
-		}
+	// Always record the seed version we just applied, even when nothing
+	// changed, so LocalVersion reflects reality after a no-op refresh.
+	marker := filepath.Join(targetDir, ".agents", ".seed-version")
+	if err := writeFile(marker, []byte(Version()+"\n")); err != nil {
+		return st, err
 	}
 	return st, nil
 }
@@ -158,18 +187,24 @@ func EnsureAt(targetDir string) (Stats, error) {
 	return Materialize(targetDir, false)
 }
 
-// empty reports whether the binary was built without a synced seed.
-func empty() bool {
-	entries, err := contentFS.ReadDir(contentRoot)
+// EnsureReport runs EnsureAt and reports the outcome through printf (which may
+// be log.Printf or fmt.Printf). The single seeding entry point shared by every
+// command so behavior can't drift between them.
+func EnsureReport(targetDir string, printf func(string, ...any)) {
+	st, err := EnsureAt(targetDir)
 	if err != nil {
-		return true
+		printf("⚠️  Seed materialize failed: %v", err)
+		return
 	}
-	for _, e := range entries {
-		if !metaFiles[e.Name()] {
-			return false
-		}
+	if len(st.Created) > 0 {
+		printf("🌱 Factory content seeded: %d files (seed %s)", len(st.Created), Version())
 	}
-	return true
+}
+
+// empty reports whether the binary was built without a synced seed. A synced
+// seed always carries SEED_VERSION, so Version()=="dev" is exactly that case.
+func empty() bool {
+	return Version() == "dev"
 }
 
 func writeFile(path string, data []byte) error {
@@ -193,14 +228,17 @@ func ContentHashes() map[string]string {
 			return nil
 		}
 		if b, err := contentFS.ReadFile(p); err == nil {
-			out[rel] = hashBytes(b)
+			out[rel] = HashBytes(b)
 		}
 		return nil
 	})
 	return out
 }
 
-func hashBytes(b []byte) string {
+// HashBytes returns the first 12 hex chars of sha256(b). Exported so the diag
+// package computes workspace-file hashes identically to the seed baseline —
+// the two MUST agree for seed-drift detection to work.
+func HashBytes(b []byte) string {
 	sum := sha256.Sum256(b)
 	return fmt.Sprintf("%x", sum)[:12]
 }

@@ -96,21 +96,16 @@ func main() {
 		log.Fatalf("Auto-init failed: %v", err)
 	}
 
-	// First-run seeding: lay down factory skills/docs next to the exe.
-	// Existing files are never touched (local evolution is preserved).
-	if cwd, err := os.Getwd(); err == nil {
-		if st, err := seed.EnsureAt(cwd); err != nil {
-			log.Printf("⚠️  Seed materialize failed: %v", err)
-		} else if len(st.Created) > 0 {
-			log.Printf("🌱 Factory content seeded: %d files (seed %s)", len(st.Created), seed.Version())
-		}
-	}
-
 	sandboxDir := "./sandbox"
 	absDir, err := filepath.Abs(sandboxDir)
 	if err != nil {
 		log.Fatalf("Failed to resolve sandbox directory: %v", err)
 	}
+
+	// First-run seeding: lay down factory skills/docs into the workspace
+	// (the sandbox's parent). Existing files are never touched — local
+	// evolution is preserved. Same workspace derivation as web.Serve below.
+	seed.EnsureReport(filepath.Dir(absDir), log.Printf)
 
 	// Auto-setup if sandbox doesn't exist
 	binDir := toolchain.SandboxBinDir(absDir)

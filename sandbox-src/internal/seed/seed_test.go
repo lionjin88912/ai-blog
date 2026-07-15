@@ -56,3 +56,18 @@ func TestVersionDevWhenUnsynced(t *testing.T) {
 		}
 	}
 }
+
+func TestUserStateAndPersonaPolicy(t *testing.T) {
+	if !IsPersonaData(".agents/skills/persona-writer/personas/mrs-lin/persona.md") {
+		t.Error("persona file should be protected")
+	}
+	if IsPersonaData(".agents/skills/persona-writer/personas/_template/persona.md") {
+		t.Error("_template must not be protected")
+	}
+	if IsPersonaData(".agents/skills/persona-writer/SKILL.md") {
+		t.Error("SKILL.md must not be protected")
+	}
+	if !IsUserState(".agents/skills/persona-writer/personas/x/draft.json") {
+		t.Error("draft.json must be user state")
+	}
+}

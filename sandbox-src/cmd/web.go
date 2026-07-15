@@ -30,11 +30,7 @@ var webCmd = &cobra.Command{
 
 		// First-run seeding: lay down factory skills/docs into the workspace
 		// (parent of sandbox/). Existing files are never touched.
-		if st, err := seed.EnsureAt(filepath.Dir(absDir)); err != nil {
-			fmt.Printf("⚠️  Seed materialize failed: %v\n", err)
-		} else if len(st.Created) > 0 {
-			fmt.Printf("🌱 Factory content seeded: %d files (seed %s)\n", len(st.Created), seed.Version())
-		}
+		seed.EnsureReport(filepath.Dir(absDir), func(f string, a ...any) { fmt.Printf(f+"\n", a...) })
 
 		binDir := toolchain.SandboxBinDir(absDir)
 		if _, err := os.Stat(binDir); os.IsNotExist(err) {

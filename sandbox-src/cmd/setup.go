@@ -26,11 +26,7 @@ uv, and Python 3.12 to the ./sandbox/ directory.`,
 		}
 
 		// First-run seeding: factory skills/docs into the workspace.
-		if st, err := seed.EnsureAt(filepath.Dir(absDir)); err != nil {
-			fmt.Printf("⚠️  Seed materialize failed: %v\n", err)
-		} else if len(st.Created) > 0 {
-			fmt.Printf("🌱 Factory content seeded: %d files (seed %s)\n\n", len(st.Created), seed.Version())
-		}
+		seed.EnsureReport(filepath.Dir(absDir), func(f string, a ...any) { fmt.Printf(f+"\n", a...) })
 
 		p := toolchain.DetectPlatform()
 		fmt.Printf("Platform: %s/%s\n", p.OS, p.Arch)

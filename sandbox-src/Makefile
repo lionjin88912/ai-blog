@@ -8,24 +8,14 @@ endif
 REPO_ROOT=..
 SEED_DIR=internal/seed/content
 
-# Populate the embedded seed from the repo root.
-# Excludes per-machine user state: credentials, publish records, drafts.
+# Populate the embedded seed from the repo root via a cross-platform Go tool
+# (works on Windows; no rsync/cp/printf). User state and untracked local
+# personas are filtered by the tool, sharing seed.IsUserState as the policy.
 seed-sync:
-	rm -rf $(SEED_DIR)/.agents
-	mkdir -p $(SEED_DIR)/.agents/skills
-	rsync -a \
-		--exclude 'wp-config.json' \
-		--exclude 'published.json' \
-		--exclude 'articles/' \
-		--exclude '__pycache__/' \
-		--exclude '.DS_Store' \
-		$(REPO_ROOT)/.agents/skills/ $(SEED_DIR)/.agents/skills/
-	cp $(REPO_ROOT)/GEMINI.md $(REPO_ROOT)/HOWTO.md $(REPO_ROOT)/BOOTSTRAP.md $(SEED_DIR)/
-	printf '%s\n' "$$(date +%Y%m%d-%H%M%S)-$$(git -C $(REPO_ROOT) rev-parse --short HEAD 2>/dev/null || echo nogit)" > $(SEED_DIR)/SEED_VERSION
-	@echo "Seed synced: $$(cat $(SEED_DIR)/SEED_VERSION)"
+	go run ./tools/seedsync $(REPO_ROOT) $(SEED_DIR)
 
 seed-clean:
-	rm -rf $(SEED_DIR)/.agents $(SEED_DIR)/GEMINI.md $(SEED_DIR)/HOWTO.md $(SEED_DIR)/BOOTSTRAP.md $(SEED_DIR)/SEED_VERSION
+	go run ./tools/seedsync --clean $(REPO_ROOT) $(SEED_DIR) 2>/dev/null || true
 
 build: seed-sync
 	go build -ldflags "-s -w" -o $(BINARY) .

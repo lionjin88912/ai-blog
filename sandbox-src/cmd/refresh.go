@@ -23,7 +23,15 @@ Overwritten files are backed up under .agents/_backup/<stamp>/ first.`,
 		if err != nil {
 			return err
 		}
-		wd, _ = filepath.Abs(wd)
+
+		// Guard: refuse to scaffold a fresh tree into a random directory.
+		// A real workspace has already been seeded (.agents/.seed-version)
+		// or at least contains .agents/.
+		if seed.LocalVersion(wd) == "" {
+			if _, statErr := os.Stat(filepath.Join(wd, ".agents")); os.IsNotExist(statErr) {
+				return fmt.Errorf("目前目錄不是已初始化的 workspace(找不到 .agents/)。請在雙擊 exe 產生的資料夾內執行,或先跑一次 setup")
+			}
+		}
 
 		fmt.Printf("Seed version: %s (local: %s)\n", seed.Version(), orNone(seed.LocalVersion(wd)))
 		st, err := seed.Materialize(wd, true)

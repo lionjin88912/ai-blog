@@ -95,3 +95,11 @@ sandbox-src/internal/seed/content/*
 !sandbox-src/internal/seed/content/README.md
 sandbox-src/ai-sandbox
 sandbox-src/dist/
+
+# ============================================================
+# 人格資料夾:官方只出廠 _template 與 mrs-lin;其餘為各機本地人格
+# (業務用 marketing-content-factory 模組 5 在本機自建,不進 git、不出廠)
+# ============================================================
+.agents/skills/persona-writer/personas/*/
+!.agents/skills/persona-writer/personas/_template/
+!.agents/skills/persona-writer/personas/mrs-lin-slow-travel/
