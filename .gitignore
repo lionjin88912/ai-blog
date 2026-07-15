@@ -87,3 +87,11 @@ desktop.ini
 .idea/
 *.swp
 *.swo
+
+# ============================================================
+# ai-sandbox 種子(build 時由 make seed-sync 產生)
+# ============================================================
+sandbox-src/internal/seed/content/*
+!sandbox-src/internal/seed/content/README.md
+sandbox-src/ai-sandbox
+sandbox-src/dist/

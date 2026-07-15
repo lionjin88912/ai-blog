@@ -65,6 +65,7 @@
 | 「新增寫手」「建立人格」「我想多一個人格」「我想做美食家」 | `marketing-content-factory` 模組 5 |
 | 「修改 XXX 的口吻」「林太太正經」「調整人格」「改活潑一點」 | `marketing-content-factory` 模組 6 |
 | 「檢查環境」「check env」「裝套件」 | `tool-status-checker` |
+| 「更新系統」「更新 SOP」「升級技能」 | 執行 `./ai-sandbox-<平台> refresh-skills`(只更新 SOP,人格與帳密不動),跑完提醒使用者重開 Antigravity |
 
 ---
 

@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ai-sandbox/cli/internal/seed"
 	"github.com/ai-sandbox/cli/internal/toolchain"
 	"github.com/spf13/cobra"
 )
@@ -22,6 +23,13 @@ uv, and Python 3.12 to the ./sandbox/ directory.`,
 
 		if err := os.MkdirAll(absDir, 0755); err != nil {
 			return fmt.Errorf("create sandbox dir: %w", err)
+		}
+
+		// First-run seeding: factory skills/docs into the workspace.
+		if st, err := seed.EnsureAt(filepath.Dir(absDir)); err != nil {
+			fmt.Printf("⚠️  Seed materialize failed: %v\n", err)
+		} else if len(st.Created) > 0 {
+			fmt.Printf("🌱 Factory content seeded: %d files (seed %s)\n\n", len(st.Created), seed.Version())
 		}
 
 		p := toolchain.DetectPlatform()

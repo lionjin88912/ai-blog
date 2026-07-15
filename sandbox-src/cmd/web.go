@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"runtime"
 
+	"github.com/ai-sandbox/cli/internal/seed"
 	"github.com/ai-sandbox/cli/internal/toolchain"
 	"github.com/ai-sandbox/cli/internal/web"
 	"github.com/spf13/cobra"
@@ -25,6 +26,14 @@ var webCmd = &cobra.Command{
 		absDir, err := filepath.Abs(sandboxDir)
 		if err != nil {
 			return err
+		}
+
+		// First-run seeding: lay down factory skills/docs into the workspace
+		// (parent of sandbox/). Existing files are never touched.
+		if st, err := seed.EnsureAt(filepath.Dir(absDir)); err != nil {
+			fmt.Printf("⚠️  Seed materialize failed: %v\n", err)
+		} else if len(st.Created) > 0 {
+			fmt.Printf("🌱 Factory content seeded: %d files (seed %s)\n", len(st.Created), seed.Version())
 		}
 
 		binDir := toolchain.SandboxBinDir(absDir)
@@ -64,7 +73,7 @@ var webCmd = &cobra.Command{
 		// Auto-open browser
 		go openBrowser("http://" + addr)
 
-		return web.Serve(addr, absDir, shellBin, shellArgs, env, geminiFlags)
+		return web.Serve(addr, absDir, shellBin, shellArgs, env, geminiFlags, version)
 	},
 }
 

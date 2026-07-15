@@ -9,6 +9,11 @@
 5. 在 agy 裡輸入 `/skills` 應看到 5 個能力(marketing-content-factory、persona-writer、tool-status-checker、wordpress-com-rest-api、translate-zh-tw)→ 直接開始說「我要寫一篇行銷文章」
 
 > Skills 一律放在專案的 `.agents/skills/`,Antigravity 自動載入,不需要手動複製到任何地方。
+> exe 內建出廠 skills:放到空資料夾雙擊也能用,第一次啟動會自動鋪好所有檔案(已存在的檔案絕不覆蓋)。
+
+**出問題要回報?** 點網頁右上角「📦 匯出診斷包」,把下載的 zip 傳給工程師即可 — 包內**不含任何密碼**(帳密欄位一律遮罩)。
+
+**要更新系統?** 拿到新版 exe 後,直接跟 Antigravity 說「更新系統」— 只會更新 SOP 與腳本,你的人格、帳密、發文紀錄一律保留(舊 SOP 自動備份到 `.agents/_backup/`)。
 
 ---
 

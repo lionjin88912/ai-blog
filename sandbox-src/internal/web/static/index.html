@@ -97,6 +97,42 @@
       margin: 4px 0;
     }
 
+    /* System badge + diagnostic export (top-right) */
+    #sys-bar {
+      position: fixed;
+      top: 8px;
+      right: 12px;
+      z-index: 950;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: system-ui, sans-serif;
+      font-size: 11px;
+    }
+
+    #sys-badge {
+      color: #a6adc8;
+      background: rgba(30, 30, 46, 0.85);
+      border: 1px solid #45475a;
+      border-radius: 8px;
+      padding: 4px 10px;
+      user-select: none;
+    }
+
+    #diag-btn {
+      color: #1e1e2e;
+      background: #f9e2af;
+      border: none;
+      border-radius: 8px;
+      padding: 5px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    #diag-btn:hover { filter: brightness(1.1); }
+    #diag-btn:active { transform: scale(0.96); }
+
     /* Launch Antigravity button */
     #launch-btn {
       position: fixed;
@@ -213,6 +249,10 @@
     <div id="terminal-container"></div>
   </div>
   <button id="launch-btn">🚀 啟動 Antigravity</button>
+  <div id="sys-bar">
+    <span id="sys-badge">loading…</span>
+    <button id="diag-btn" title="下載診斷包(不含任何密碼),回報問題時把檔案傳給工程師">📦 匯出診斷包</button>
+  </div>
   <div id="ctx-menu">
     <div class="item" id="ctx-copy">複製<span class="shortcut">Ctrl+Shift+C</span></div>
     <div class="sep"></div>
@@ -414,6 +454,17 @@
         geminiFlags = cfg.geminiFlags || '';
         console.log('[config] geminiFlags:', geminiFlags);
       }).catch(function(e) { console.warn('[config] fetch failed:', e); });
+
+      // Version badge + diagnostic export
+      fetch('/api/version').then(function(r) { return r.json(); }).then(function(v) {
+        var seedTxt = (v.seed_local || v.seed || 'dev').split('-').slice(0, 2).join('-');
+        document.getElementById('sys-badge').textContent = 'v' + v.exe + ' · seed ' + seedTxt;
+      }).catch(function() {
+        document.getElementById('sys-badge').textContent = 'version n/a';
+      });
+      document.getElementById('diag-btn').addEventListener('click', function () {
+        window.location.href = '/api/diagnostic';
+      });
 
       // Detect shell prompt from terminal output
       var outputBuf = '';
@@ -653,10 +704,10 @@
           if (hasTypeMsg) {
             antigravityReady = true;
             menuBuf = '';
-            console.log('[quick-bar] Antigravity ready, auto-sending import all setting from GEMINI.md');
+            console.log('[quick-bar] Antigravity ready, auto-sending greeting (GEMINI.md rules auto-load as workspace rules)');
             setTimeout(function () {
               if (ws.readyState === WebSocket.OPEN) {
-                ws.send('import all setting from GEMINI.md');
+                ws.send('你好，請照 GEMINI.md 的第一次互動流程開始');
                 setTimeout(function () { ws.send('\r'); }, 100);
               }
             }, 300);
