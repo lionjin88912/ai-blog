@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Sandbox Terminal</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      height: 100%;
+      background: #1e1e2e;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #top-bar {
+      height: 36px;
+      background: #181825;
+      color: #cdd6f4;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      font-family: system-ui, sans-serif;
+      font-size: 13px;
+      border-bottom: 1px solid #313244;
+      user-select: none;
+    }
+
+    #top-bar .title {
+      flex: 1;
+    }
+
+    #top-bar .status {
+      font-size: 12px;
+      color: #a6adc8;
+    }
+
+    #main-wrap {
+      flex: 1;
+      min-height: 0;
+    }
+
+    #terminal-container {
+      height: 100%;
+    }
+
+    /* Context menu */
+    #ctx-menu {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      background: #313244;
+      border: 1px solid #45475a;
+      border-radius: 6px;
+      padding: 4px 0;
+      min-width: 160px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+      font-family: system-ui, sans-serif;
+      font-size: 13px;
+    }
+
+    #ctx-menu.show {
+      display: block;
+    }
+
+    #ctx-menu .item {
+      padding: 6px 16px;
+      color: #cdd6f4;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    #ctx-menu .item:hover {
+      background: #45475a;
+    }
+
+    #ctx-menu .item .shortcut {
+      color: #6c7086;
+      font-size: 11px;
+      margin-left: 24px;
+    }
+
+    #ctx-menu .sep {
+      height: 1px;
+      background: #45475a;
+      margin: 4px 0;
+    }
+
+    /* Launch Antigravity button */
+    #launch-btn {
+      position: fixed;
+      z-index: 900;
+      bottom: 25%;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 20px 56px;
+      font-size: 22px;
+      font-family: system-ui, sans-serif;
+      font-weight: 700;
+      color: #1e1e2e;
+      background: linear-gradient(135deg, #a6e3a1, #94e2d5);
+      border: none;
+      border-radius: 16px;
+      cursor: pointer;
+      user-select: none;
+      box-shadow: 0 6px 32px rgba(166, 227, 161, 0.5);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s, visibility 0.3s, transform 0.2s;
+      letter-spacing: 1px;
+    }
+
+    #launch-btn.visible {
+      opacity: 1;
+      visibility: visible;
+      animation: pulse 2s infinite;
+    }
+
+    #launch-btn:hover {
+      transform: translateX(-50%) scale(1.08);
+      box-shadow: 0 8px 40px rgba(166, 227, 161, 0.7);
+    }
+
+    #launch-btn:active {
+      transform: translateX(-50%) scale(0.95);
+    }
+
+    #launch-btn.fadeout {
+      opacity: 0;
+      visibility: hidden;
+      animation: none;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        box-shadow: 0 6px 32px rgba(166, 227, 161, 0.5);
+      }
+
+      50% {
+        box-shadow: 0 8px 48px rgba(148, 226, 213, 0.8);
+      }
+    }
+
+    /* Quick-reply bar */
+    #quick-bar {
+      background: #181825;
+      border-bottom: 1px solid #313244;
+      padding: 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: center;
+      height: auto;
+      overflow: hidden;
+    }
+
+    #quick-bar:empty {
+      padding: 0;
+      border-bottom: none;
+    }
+
+    #quick-bar:not(:empty) {
+      padding: 10px 16px;
+    }
+
+    #quick-bar .pill {
+      padding: 8px 18px;
+      font-size: 14px;
+      font-family: system-ui, sans-serif;
+      color: #cdd6f4;
+      background: #313244;
+      border: 1px solid #45475a;
+      border-radius: 20px;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s, border-color 0.15s, transform 0.1s;
+      white-space: nowrap;
+    }
+
+    #quick-bar .pill:hover {
+      background: #45475a;
+      border-color: #89b4fa;
+      transform: scale(1.05);
+    }
+
+    #quick-bar .pill:active {
+      transform: scale(0.95);
+    }
+  </style>
+</head>
+
+<body>
+  <div id="top-bar">
+    <span class="title">AI Sandbox Terminal</span>
+    <span class="status" id="status">Connecting...</span>
+  </div>
+  <div id="quick-bar"></div>
+  <div id="main-wrap">
+    <div id="terminal-container"></div>
+  </div>
+  <button id="launch-btn">🚀 啟動 Antigravity</button>
+  <div id="ctx-menu">
+    <div class="item" id="ctx-copy">複製<span class="shortcut">Ctrl+Shift+C</span></div>
+    <div class="sep"></div>
+    <div class="item" id="ctx-paste">貼上<span class="shortcut">Ctrl+Shift+V</span></div>
+    <div class="item" id="ctx-paste-img">貼上截圖<span class="shortcut">Ctrl+V</span></div>
+    <div class="sep"></div>
+    <div class="item" id="ctx-select-all">全選<span class="shortcut">Ctrl+Shift+A</span></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-web-links@0.11.0/lib/addon-web-links.min.js"></script>
+  <script>
+    (function () {
+      const term = new Terminal({
+        cursorBlink: true,
+        fontSize: 15,
+        fontFamily: "'Cascadia Code', 'Consolas', 'Courier New', monospace",
+        theme: {
+          background: '#1e1e2e',
+          foreground: '#cdd6f4',
+          cursor: '#f5e0dc',
+          selectionBackground: '#585b7066',
+          black: '#45475a',
+          red: '#f38ba8',
+          green: '#a6e3a1',
+          yellow: '#f9e2af',
+          blue: '#89b4fa',
+          magenta: '#f5c2e7',
+          cyan: '#94e2d5',
+          white: '#cdd6f4',
+          brightBlack: '#9399b2',
+          brightRed: '#f38ba8',
+          brightGreen: '#a6e3a1',
+          brightYellow: '#f9e2af',
+          brightBlue: '#89b4fa',
+          brightMagenta: '#f5c2e7',
+          brightCyan: '#94e2d5',
+          brightWhite: '#cdd6f4',
+        },
+      });
+
+      const fitAddon = new FitAddon.FitAddon();
+      const webLinksAddon = new WebLinksAddon.WebLinksAddon();
+      term.loadAddon(fitAddon);
+      term.loadAddon(webLinksAddon);
+      term.open(document.getElementById('terminal-container'));
+      fitAddon.fit();
+
+      const statusEl = document.getElementById('status');
+      const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const ws = new WebSocket(wsProto + '//' + location.host + '/ws');
+      ws.binaryType = 'arraybuffer';
+
+      ws.onopen = function () {
+        console.log('[DEBUG] ws.onopen fired');
+        statusEl.textContent = 'Connected';
+        statusEl.style.color = '#a6e3a1';
+        // Send initial terminal size
+        ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
+      };
+
+      ws.onmessage = function (evt) {
+        if (evt.data instanceof ArrayBuffer) {
+          term.write(new Uint8Array(evt.data));
+        } else {
+          term.write(evt.data);
+        }
+      };
+
+      ws.onclose = function () {
+        statusEl.textContent = 'Disconnected';
+        statusEl.style.color = '#f38ba8';
+        term.write('\r\n\x1b[31m[Connection closed]\x1b[0m\r\n');
+      };
+
+      ws.onerror = function () {
+        statusEl.textContent = 'Error';
+        statusEl.style.color = '#f38ba8';
+      };
+
+      // Handle paste from clipboard (Ctrl+Shift+V)
+      term.attachCustomKeyEventHandler(function (ev) {
+        if (ev.type !== 'keydown') return true;
+        if (ev.ctrlKey && ev.shiftKey && ev.key === 'V') {
+          doPaste(); return false;
+        }
+        if (ev.ctrlKey && ev.shiftKey && ev.key === 'C') {
+          doCopy(); return false;
+        }
+        if (ev.ctrlKey && ev.shiftKey && ev.key === 'A') {
+          term.selectAll(); return false;
+        }
+        return true;
+      });
+
+      function doCopy() {
+        var sel = term.getSelection();
+        if (sel) navigator.clipboard.writeText(sel);
+      }
+
+      function doPaste() {
+        navigator.clipboard.readText().then(function (text) {
+          if (text && ws.readyState === WebSocket.OPEN) ws.send(text);
+        });
+      }
+
+      function sendImageBlob(blob) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({
+              type: 'image-paste',
+              data: e.target.result
+            }));
+            term.write('\r\n\x1b[33m[截圖已送出分析]\x1b[0m\r\n');
+          }
+        };
+        reader.readAsDataURL(blob);
+      }
+
+      function doPasteImage() {
+        navigator.clipboard.read().then(function (items) {
+          for (let item of items) {
+            for (let type of item.types) {
+              if (type.startsWith('image/')) {
+                item.getType(type).then(sendImageBlob);
+                return;
+              }
+            }
+          }
+        }).catch(err => {
+          console.error('Failed to read clipboard:', err);
+        });
+      }
+
+      // Handle global paste — use the blob directly from the event (no permission prompt)
+      window.addEventListener('paste', function (e) {
+        if (e.clipboardData && e.clipboardData.items) {
+          for (let item of e.clipboardData.items) {
+            if (item.type.startsWith('image/')) {
+              e.preventDefault();
+              sendImageBlob(item.getAsFile());
+              return;
+            }
+          }
+        }
+      });
+
+      // Handle resize
+      window.addEventListener('resize', function () {
+        fitAddon.fit();
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
+        }
+      });
+
+      // Context menu
+      var ctxMenu = document.getElementById('ctx-menu');
+
+      term.element.addEventListener('contextmenu', function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        // Position menu at cursor
+        var x = ev.clientX, y = ev.clientY;
+        ctxMenu.style.left = x + 'px';
+        ctxMenu.style.top = y + 'px';
+        ctxMenu.classList.add('show');
+      });
+
+      document.addEventListener('mousedown', function (ev) {
+        if (!ctxMenu.contains(ev.target)) ctxMenu.classList.remove('show');
+      });
+      document.addEventListener('contextmenu', function (ev) {
+        if (!term.element.contains(ev.target)) ctxMenu.classList.remove('show');
+      });
+
+      document.getElementById('ctx-copy').addEventListener('click', function () {
+        doCopy(); ctxMenu.classList.remove('show'); term.focus();
+      });
+      document.getElementById('ctx-paste').addEventListener('click', function () {
+        doPaste(); ctxMenu.classList.remove('show'); term.focus();
+      });
+      document.getElementById('ctx-paste-img').addEventListener('click', function () {
+        doPasteImage(); ctxMenu.classList.remove('show'); term.focus();
+      });
+      document.getElementById('ctx-select-all').addEventListener('click', function () {
+        term.selectAll(); ctxMenu.classList.remove('show'); term.focus();
+      });
+
+      // --- Launch Antigravity button logic ---
+      var launchBtn = document.getElementById('launch-btn');
+      var shellReady = false;
+      var antigravityLaunched = false;
+
+      // Fetch server config (gemini flags etc.)
+      var geminiFlags = '';
+      fetch('/api/config').then(function(r) { return r.json(); }).then(function(cfg) {
+        geminiFlags = cfg.geminiFlags || '';
+        console.log('[config] geminiFlags:', geminiFlags);
+      }).catch(function(e) { console.warn('[config] fetch failed:', e); });
+
+      // Detect shell prompt from terminal output
+      var outputBuf = '';
+      var origOnMessage = ws.onmessage;
+      ws.onmessage = function (evt) {
+        origOnMessage(evt);
+        if (antigravityLaunched) {
+          console.log('[DEBUG][prompt-detect] skipping — antigravityLaunched is true');
+          return;
+        }
+        // Collect text to detect prompt
+        var text = '';
+        if (evt.data instanceof ArrayBuffer) {
+          text = new TextDecoder().decode(evt.data);
+        } else {
+          text = evt.data;
+        }
+        outputBuf += text;
+        // Strip all ANSI escape sequences (CSI, OSC, etc.)
+        var clean = outputBuf.replace(/\x1b\][^\x07]*\x07/g, '').replace(/\x1b\[[0-9;?]*[a-zA-Z]/g, '').replace(/\x1b[^[\]]/g, '');
+        // Look for bash prompt: $ anywhere near end of output (MINGW64 format)
+        if (!shellReady && /\$\s*$/m.test(clean.slice(-500))) {
+          shellReady = true;
+          launchBtn.classList.add('visible');
+        }
+      };
+
+      // Fallback: show button after 3 seconds regardless
+      setTimeout(function () {
+        if (!shellReady && !antigravityLaunched) {
+          shellReady = true;
+          launchBtn.classList.add('visible');
+        }
+      }, 3000);
+
+      launchBtn.addEventListener('click', function () {
+        console.log('[DEBUG] launch button clicked, antigravityLaunched=', antigravityLaunched);
+        if (antigravityLaunched) return;
+        antigravityLaunched = true;
+        console.log('[DEBUG] antigravityLaunched set to true');
+        launchBtn.classList.remove('visible');
+        launchBtn.classList.add('fadeout');
+        setTimeout(function () { launchBtn.remove(); }, 400);
+        if (ws.readyState === WebSocket.OPEN) {
+          var agyCmd = 'export PATH="$(pwd)/sandbox/antigravity:$PATH" && agy' + (geminiFlags ? ' ' + geminiFlags : '') + '\n';
+          ws.send(agyCmd);
+        }
+        term.focus();
+      });
+
+      // Hide button if user types anything
+      term.onData(function (data) {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(data);
+        }
+        if (!antigravityLaunched && shellReady) {
+          antigravityLaunched = true;
+          launchBtn.classList.remove('visible');
+          launchBtn.classList.add('fadeout');
+          setTimeout(function () { launchBtn.remove(); }, 400);
+        }
+        // Hide quick-bar when user types
+        //clearMenu();
+        // Hide quick-bar when user presses Enter
+        if (data === '\r' || data === '\n') clearMenu();
+      });
+
+      // --- Quick-reply bar logic ---
+      var quickBar = document.getElementById('quick-bar');
+      var menuBuf = '';
+      var menuItems = [];    // accumulated parsed items [{key, label, isBullet}]
+      var menuRenderedKey = ''; // hash of last rendered items to avoid flicker
+
+      function clearMenu() {
+        menuItems = [];
+        menuRenderedKey = '';
+        hideQuickBar();
+      }
+
+      function hideQuickBar() {
+        quickBar.innerHTML = '';
+        fitAddon.fit();
+      }
+
+      function stripAnsi(text) {
+        return text.replace(/\x1b\][^\x07]*\x07/g, '')
+          .replace(/\x1b\[[0-9;?]*[a-zA-Z]/g, '')
+          .replace(/\x1b[^[\]]/g, '')
+          .replace(/[\x00-\x08\x0e-\x1f]/g, '');
+      }
+
+      // Parse a text chunk and push new items into menuItems (deduped by key)
+      function collectMenuItems(text) {
+        var clean = stripAnsi(text);
+        var lines = clean.split(/[\r\n]+/);
+        for (var i = 0; i < lines.length; i++) {
+          var line = lines[i].trim();
+          if (!line) continue;
+          // Skip table rows (contain |) and separator lines (---)
+          if (/\|/.test(line) || /^[-=]{3,}$/.test(line)) continue;
+          if (/^\*\*/.test(line)) continue;
+          // Skip markdown checkboxes, headers, and status lines
+          if (/^\[[ x]\]/.test(line) || /^#+\s/.test(line)) continue;
+          console.log('[collectMenuItems] line:', JSON.stringify(line));
+          var key = null, desc = '', isBullet = false;
+          // Pattern 1: emoji keycap numbers 1️⃣~9️⃣
+          var m = line.match(/([1-9])\uFE0F?\u20E3\s*(.{2,})/);
+          if (m) { key = m[1]; desc = m[2].slice(0, 30); console.log('[collectMenuItems] P1 hit:', key, desc); }
+          // Pattern 2: number followed by delimiters/spaces, or preceded by dash (- [N] desc)
+          if (!key) {
+            m = line.match(/^\s*-?\s*\[?([1-9])\]?[.):\u25c6\s]+(.{2,})/);
+            if (m) { key = m[1]; desc = m[2].slice(0, 30); console.log('[collectMenuItems] P2 hit:', key, desc); }
+          }
+          // Validate: must contain CJK or meaningful English
+          if (key && (!/[\u4e00-\u9fff\u3400-\u4dbf]/.test(desc) && !/[a-zA-Z]{2,}/.test(desc))) {
+            console.log('[collectMenuItems] REJECTED (no CJK/English):', key, desc);
+            key = null;
+          }
+          if (key) {
+            // Update existing item (label may get longer as streaming completes)
+            var label = key + '. ' + desc.replace(/^[\s\u25c6.):]+/, '');
+            // If desc contains 「...」, send the quoted text instead of the number
+            var sendText = null;
+            var qm = desc.match(/[\u300c\u300e](.{2,}?)[\u300d\u300f]/);
+            if (qm) sendText = qm[1];
+            var found = false;
+            for (var j = 0; j < menuItems.length; j++) {
+              if (menuItems[j].key === key) {
+                if (label.length > menuItems[j].label.length) {
+                  menuItems[j].label = label;
+                  if (sendText) menuItems[j].sendText = sendText;
+                }
+                found = true; break;
+              }
+            }
+            if (!found) {
+              console.log('[collectMenuItems] ADD numbered:', key, label, 'sendText:', sendText);
+              menuItems.push({ key: key, label: label, isBullet: false, sendText: sendText });
+            }
+            continue;
+          }
+          // Pattern 3: bullet items  * 「...」 or - 「...」 or 「...」 (with optional leading whitespace/bullet/dash)
+          m = line.match(/^[\s*\-]*[\u300c\u300e\u201c\u201f"](.{2,}?)[\u300d\u300f\u201d"]\s*$/);
+          if (m) {
+            var txt = m[1].slice(0, 30);
+            var bkey = 'b_' + txt;
+            var exists = false;
+            for (var j = 0; j < menuItems.length; j++) {
+              if (menuItems[j].key === bkey) { exists = true; break; }
+            }
+            if (!exists) {
+              console.log('[collectMenuItems] ADD bullet:', bkey, txt);
+              menuItems.push({ key: bkey, label: '* ' + txt, isBullet: true, sendText: m[1] });
+            }
+          } else {
+            console.log('[collectMenuItems] NO MATCH:', JSON.stringify(line));
+          }
+        }
+      }
+
+      function renderQuickBar(items) {
+        quickBar.innerHTML = '';
+        items.forEach(function (item) {
+          var btn = document.createElement('button');
+          btn.className = 'pill';
+          btn.textContent = item.label;
+          btn.addEventListener('click', function () {
+            if (ws.readyState === WebSocket.OPEN) {
+              var input = item.sendText ? item.sendText : item.key;
+              ws.send(input);
+              setTimeout(function () { ws.send('\r'); }, 100);
+            }
+            clearMenu();
+            term.focus();
+          });
+          quickBar.appendChild(btn);
+        });
+        // quickBar is always visible; layout auto-adjusts via flexbox
+        fitAddon.fit();
+      }
+
+      // --- Poll: every 500ms check menuItems and update bar ---
+      setInterval(function () {
+        console.log('[DEBUG][setInterval] tick — menuItems.length=', menuItems.length, 'antigravityReady=', antigravityReady, 'antigravityLaunched=', antigravityLaunched);
+        if (menuItems.length > 0) {
+          console.log('[DEBUG][setInterval] menuItems:', JSON.stringify(menuItems));
+        }
+        if (menuItems.length < 2) {
+          console.log('[DEBUG][setInterval] SKIP — less than 2 items');
+          return;
+        }
+        // Sort: numbered first, then bullets
+        var sorted = menuItems.slice().sort(function (a, b) {
+          if (a.isBullet !== b.isBullet) return a.isBullet ? 1 : -1;
+          return (a.key < b.key) ? -1 : (a.key > b.key) ? 1 : 0;
+        }).slice(0, 12);
+        var newKey = sorted.map(function (i) { return i.key + ':' + i.label; }).join('|');
+        if (newKey !== menuRenderedKey) {
+          console.log('[quick-bar] rendering', sorted.length, 'items:', sorted.map(function (i) { return i.label; }));
+          menuRenderedKey = newKey;
+          renderQuickBar(sorted);
+        } else {
+          console.log('[DEBUG][setInterval] no change, skipping render');
+        }
+      }, 500);
+
+      // Intercept ws messages for menu detection (after antigravity is launched)
+      var origOnMessage2 = ws.onmessage;
+      var antigravityReady = false;
+      console.log('[DEBUG] final onmessage handler installed, antigravityLaunched=', antigravityLaunched);
+      ws.onmessage = function (evt) {
+        console.log('[DEBUG][final-onmsg] *** ENTRY *** evt.data type=', typeof evt.data, 'isArrayBuffer=', evt.data instanceof ArrayBuffer);
+        origOnMessage2(evt);
+        console.log('[DEBUG][final-onmsg] after origOnMessage2, antigravityLaunched=', antigravityLaunched, 'antigravityReady=', antigravityReady);
+        if (!antigravityLaunched) {
+          console.log('[DEBUG][final-onmsg] SKIP — antigravityLaunched is false');
+          return;
+        }
+        var text = '';
+        if (evt.data instanceof ArrayBuffer) {
+          text = new TextDecoder().decode(evt.data);
+          console.log('[DEBUG][final-onmsg] received ArrayBuffer, decoded length=', text.length);
+        } else {
+          text = evt.data;
+          console.log('[DEBUG][final-onmsg] received string, length=', text.length);
+        }
+        console.log('[DEBUG][final-onmsg] raw text (first 200 chars):', JSON.stringify(text.slice(0, 200)));
+
+        // Auto-send "hi" when Antigravity is ready for the first time
+        if (!antigravityReady) {
+          menuBuf += text;
+          var cleanCheck = stripAnsi(menuBuf);
+          var hasTypeMsg = /\? for shortcuts/.test(cleanCheck);
+          console.log('[DEBUG][ready-check] menuBuf length=', menuBuf.length, 'cleanCheck length=', cleanCheck.length);
+          console.log('[DEBUG][ready-check] cleanCheck (last 300 chars):', JSON.stringify(cleanCheck.slice(-300)));
+          console.log('[DEBUG][ready-check] regex /? for shortcuts/ match=', hasTypeMsg);
+          if (hasTypeMsg) {
+            antigravityReady = true;
+            menuBuf = '';
+            console.log('[quick-bar] Antigravity ready, auto-sending import all setting from GEMINI.md');
+            setTimeout(function () {
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send('import all setting from GEMINI.md');
+                setTimeout(function () { ws.send('\r'); }, 100);
+              }
+            }, 300);
+          }
+          return;
+        }
+
+        // Only process output that contains newlines (actual content).
+        // Status bar updates use cursor positioning without newlines — skip.
+        if (!/\n/.test(text)) return;
+        collectMenuItems(text);
+      };
+
+      // Focus terminal on load
+      term.focus();
+    })();
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,7 @@
+dist/
+sandbox/
+*.exe
+*.zip
+*.tar.gz
+.git/
+node_modules/
