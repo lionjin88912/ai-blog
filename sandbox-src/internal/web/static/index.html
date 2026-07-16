@@ -306,7 +306,10 @@
   </div>
   <div id="sys-bar">
     <span id="sys-badge">loading…</span>
+    <button id="backup-btn" title="匯出人格 + WordPress 設定備份,交接給其他同事(含帳密,請用安全管道傳遞)">💾 匯出備份</button>
+    <button id="importbk-btn" title="從備份檔匯入人格 + WordPress 設定(接手別人的工作)">📂 匯入備份</button>
     <button id="diag-btn" title="下載診斷包(不含任何密碼),回報問題時把檔案傳給工程師">📦 匯出診斷包</button>
+    <input type="file" id="importbk-file" accept=".zip" style="display:none">
   </div>
   <div id="ctx-menu">
     <div class="item" id="ctx-copy">複製<span class="shortcut">Ctrl+Shift+C</span></div>
@@ -549,6 +552,30 @@
       });
       document.getElementById('diag-btn').addEventListener('click', function () {
         window.location.href = '/api/diagnostic';
+      });
+
+      // Export backup (personas + WP settings) for handover.
+      document.getElementById('backup-btn').addEventListener('click', function () {
+        if (!confirm('匯出的備份檔含 WordPress 帳密。請用公司安全管道傳給接手同事,交接後刪除。要繼續嗎?')) return;
+        window.location.href = '/api/backup/export';
+      });
+
+      // Import backup — pick a .zip and upload.
+      var importFile = document.getElementById('importbk-file');
+      document.getElementById('importbk-btn').addEventListener('click', function () { importFile.click(); });
+      importFile.addEventListener('change', function () {
+        if (!importFile.files.length) return;
+        var fd = new FormData();
+        fd.append('file', importFile.files[0]);
+        importFile.value = '';
+        fetch('/api/backup/import', { method: 'POST', body: fd })
+          .then(function (r) { return r.json(); })
+          .then(function (rep) {
+            if (rep.error) { alert('匯入失敗:' + rep.error); return; }
+            alert('✅ 匯入完成:匯入 ' + rep.imported + '、補齊 ' + rep.merged +
+              '、跳過 ' + rep.skipped + '、失敗 ' + rep.errored + '。\n重開 Antigravity 後即可用。');
+          })
+          .catch(function (e) { alert('匯入失敗:' + e); });
       });
 
       // --- First-run: offer to import personas/WordPress from an old install ---

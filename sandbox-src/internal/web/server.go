@@ -4,13 +4,16 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"log"
 	"net"
 	"net/http"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/ai-sandbox/cli/internal/backup"
 	"github.com/ai-sandbox/cli/internal/diag"
 	"github.com/ai-sandbox/cli/internal/migrate"
 	"github.com/ai-sandbox/cli/internal/seed"
@@ -100,6 +103,58 @@ func Serve(addr, sandboxDir, shellPath string, shellArgs, env []string, geminiFl
 		json.NewEncoder(w).Encode(rep)
 		log.Printf("Migrate from %s: imported=%d merged=%d skipped=%d errored=%d",
 			from, rep.Imported, rep.Merged, rep.Skipped, rep.Errored)
+	})
+
+	// /api/backup/export — download a portable backup zip (personas + WP
+	// settings + publish history) to hand work over to another machine.
+	mux.HandleFunc("/api/backup/export", func(w http.ResponseWriter, r *http.Request) {
+		if !isLoopbackHost(r.Host) {
+			http.Error(w, "forbidden host", http.StatusForbidden)
+			return
+		}
+		data, name, err := backup.Export(workspaceDir, time.Now())
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/zip")
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", name))
+		_, _ = w.Write(data)
+		log.Printf("Backup exported: %s (%d bytes)", name, len(data))
+	})
+
+	// /api/backup/import — upload a backup zip and merge it into this
+	// workspace (reuses the migrate engine: clean + no-overwrite).
+	mux.HandleFunc("/api/backup/import", func(w http.ResponseWriter, r *http.Request) {
+		if !isLoopbackHost(r.Host) {
+			http.Error(w, "forbidden host", http.StatusForbidden)
+			return
+		}
+		if err := r.ParseMultipartForm(32 << 20); err != nil {
+			http.Error(w, "bad upload", http.StatusBadRequest)
+			return
+		}
+		file, _, err := r.FormFile("file")
+		if err != nil {
+			http.Error(w, "missing file", http.StatusBadRequest)
+			return
+		}
+		defer file.Close()
+		data, err := io.ReadAll(file)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		rep, err := backup.Import(data, workspaceDir)
+		w.Header().Set("Content-Type", "application/json")
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+			return
+		}
+		json.NewEncoder(w).Encode(rep)
+		log.Printf("Backup imported: imported=%d merged=%d skipped=%d errored=%d",
+			rep.Imported, rep.Merged, rep.Skipped, rep.Errored)
 	})
 
 	listener, err := net.Listen("tcp", addr)

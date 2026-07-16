@@ -67,6 +67,8 @@
 | 「檢查環境」「check env」「裝套件」 | `tool-status-checker` |
 | 「更新系統」「更新 SOP」「升級技能」 | 執行 `./ai-blog-<平台> refresh-skills`(只更新 SOP,人格與帳密不動),跑完提醒使用者重開 Antigravity |
 | 「匯入舊版」「從舊版搬人格」「舊的設定拿過來」 | 先跑 `ai-blog migrate`(自動掃描列出舊安裝),或 `ai-blog migrate --from "<舊資料夾路徑>"` 匯入(只搬乾淨的人格+WordPress設定,舊資料夾不動)。不確定先加 `--dry-run` 預覽 |
+| 「匯出備份」「備份人格」「交接給同事」「離職交接」 | `ai-blog backup export`(產出含人格+WordPress設定的 zip);提醒含帳密要走安全管道傳、用完刪。或點網頁右上「💾 匯出備份」 |
+| 「接手工作」「匯入備份」「從備份還原」「接同事的 AI Blog」 | `ai-blog backup import <備份檔.zip>`,或點網頁右上「📂 匯入備份」選檔。只補缺、不覆蓋既有人格 |
 
 ---
 
