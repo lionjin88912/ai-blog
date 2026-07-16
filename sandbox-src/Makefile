@@ -8,6 +8,11 @@ endif
 REPO_ROOT=..
 SEED_DIR=internal/seed/content
 
+# Version baked into the binary (shown in the badge + `--version`). Sourced from
+# the repo-root VERSION file; falls back to "dev" if absent.
+VERSION := $(shell cat $(REPO_ROOT)/VERSION 2>/dev/null || echo dev)
+LDFLAGS := -s -w -X github.com/ai-sandbox/cli/cmd.version=$(VERSION)
+
 # Regenerate the Windows exe icon/version resource from build/icon.svg.
 # Requires macOS (sips) + goversioninfo. The resulting .syso is committed so a
 # plain `make build-all` picks up the icon without this toolchain.
@@ -30,9 +35,9 @@ seed-clean:
 	go run ./tools/seedsync --clean $(REPO_ROOT) $(SEED_DIR) 2>/dev/null || true
 
 build: seed-sync
-	go build -ldflags "-s -w" -o $(BINARY) .
+	go build -ldflags "$(LDFLAGS)" -o $(BINARY) .
 ifeq ($(OS),Windows_NT)
-	go build -ldflags "-s -w" -o sandbox/bin/pwsh.exe ./cmd/pwsh-shim
+	go build -ldflags "$(LDFLAGS)" -o sandbox/bin/pwsh.exe ./cmd/pwsh-shim
 endif
 
 run: build
@@ -53,11 +58,11 @@ icon-check:
 	fi
 
 build-all: icon-check seed-sync
-	GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o dist/ai-blog-linux-amd64 .
-	GOOS=darwin GOARCH=amd64 go build -ldflags "-s -w" -o dist/ai-blog-darwin-amd64 .
-	GOOS=darwin GOARCH=arm64 go build -ldflags "-s -w" -o dist/ai-blog-darwin-arm64 .
-	GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o dist/ai-blog-windows-amd64.exe .
-	GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o dist/pwsh.exe ./cmd/pwsh-shim
+	GOOS=linux GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o dist/ai-blog-linux-amd64 .
+	GOOS=darwin GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o dist/ai-blog-darwin-amd64 .
+	GOOS=darwin GOARCH=arm64 go build -ldflags "$(LDFLAGS)" -o dist/ai-blog-darwin-arm64 .
+	GOOS=windows GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o dist/ai-blog-windows-amd64.exe .
+	GOOS=windows GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o dist/pwsh.exe ./cmd/pwsh-shim
 
 docker-build:
 	mkdir -p dist

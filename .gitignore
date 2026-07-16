@@ -16,6 +16,7 @@ sandbox/
 .venv/
 node_modules/
 ai-blog-*
+!ai-blog-windows-amd64.bat
 ai-sandbox-*
 
 # ============================================================

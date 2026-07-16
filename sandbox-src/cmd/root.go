@@ -13,8 +13,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// version is injected at build time via -ldflags "-X ...cmd.version=$(VERSION)"
+// (see Makefile, sourced from the repo-root VERSION file). "dev" marks a build
+// made without that injection.
 var (
-	version    = "0.1.0"
+	version    = "dev"
 	sandboxDir string
 	shellFlag  string
 )

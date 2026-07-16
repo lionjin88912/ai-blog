@@ -1,0 +1,47 @@
+name: release
+
+# Cut a release by pushing a tag:  git tag v1.0.0 && git push origin v1.0.0
+# This builds all platforms with the version baked in and publishes a GitHub
+# Release. The stable "always latest" download link for business users is:
+#   https://github.com/<owner>/<repo>/releases/latest/download/ai-blog-windows-amd64.exe
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Sync VERSION to the pushed tag
+        run: echo "${GITHUB_REF_NAME#v}" > VERSION
+
+      - name: Build all platforms
+        working-directory: sandbox-src
+        run: make build-all
+
+      - name: Stage release assets
+        run: |
+          mkdir -p release
+          cp sandbox-src/dist/ai-blog-windows-amd64.exe release/
+          cp sandbox-src/dist/ai-blog-darwin-arm64      release/
+          cp sandbox-src/dist/ai-blog-darwin-amd64      release/
+          cp sandbox-src/dist/ai-blog-linux-amd64       release/
+          cp sandbox-src/dist/pwsh.exe                  release/
+          cp ai-blog-windows-amd64.bat                  release/ 2>/dev/null || true
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
+          generate_release_notes: true
