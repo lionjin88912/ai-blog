@@ -308,18 +308,32 @@
       ws.binaryType = 'arraybuffer';
 
       ws.onopen = function () {
-        console.log('[DEBUG] ws.onopen fired');
         statusEl.textContent = 'Connected';
         statusEl.style.color = '#a6e3a1';
         // Send initial terminal size
         ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
       };
 
+      // Single message handler: render output, then advance the launch /
+      // agy-ready / quick-bar state machine. (Replaces three chained
+      // ws.onmessage wrappers that were hard to follow.)
+      var outputBuf = '';
+      var antigravityReady = false;
       ws.onmessage = function (evt) {
         if (evt.data instanceof ArrayBuffer) {
           term.write(new Uint8Array(evt.data));
         } else {
           term.write(evt.data);
+        }
+        var text = (evt.data instanceof ArrayBuffer)
+          ? new TextDecoder().decode(evt.data)
+          : evt.data;
+        if (!antigravityLaunched) {
+          detectShellPrompt(text);
+        } else if (!antigravityReady) {
+          detectAgyReady(text);
+        } else if (/\n/.test(text)) {
+          collectMenuItems(text);
         }
       };
 
@@ -356,7 +370,12 @@
 
       function doPaste() {
         navigator.clipboard.readText().then(function (text) {
-          if (text && ws.readyState === WebSocket.OPEN) ws.send(text);
+          // Route through term.paste so multi-line content is wrapped in
+          // bracketed-paste (ESC[200~ … ESC[201~) when agy enables it: the
+          // whole block arrives as one paste instead of each newline being
+          // treated as Enter (which chopped multi-line input and looked like
+          // duplicated lines). onData forwards it to the PTY exactly once.
+          if (text) term.paste(text);
         });
       }
 
@@ -452,8 +471,7 @@
       var geminiFlags = '';
       fetch('/api/config').then(function(r) { return r.json(); }).then(function(cfg) {
         geminiFlags = cfg.geminiFlags || '';
-        console.log('[config] geminiFlags:', geminiFlags);
-      }).catch(function(e) { console.warn('[config] fetch failed:', e); });
+      }).catch(function() {});
 
       // Version badge + diagnostic export
       fetch('/api/version').then(function(r) { return r.json(); }).then(function(v) {
@@ -466,31 +484,15 @@
         window.location.href = '/api/diagnostic';
       });
 
-      // Detect shell prompt from terminal output
-      var outputBuf = '';
-      var origOnMessage = ws.onmessage;
-      ws.onmessage = function (evt) {
-        origOnMessage(evt);
-        if (antigravityLaunched) {
-          console.log('[DEBUG][prompt-detect] skipping — antigravityLaunched is true');
-          return;
-        }
-        // Collect text to detect prompt
-        var text = '';
-        if (evt.data instanceof ArrayBuffer) {
-          text = new TextDecoder().decode(evt.data);
-        } else {
-          text = evt.data;
-        }
+      // Show the Launch button once the shell prompt appears.
+      function detectShellPrompt(text) {
         outputBuf += text;
-        // Strip all ANSI escape sequences (CSI, OSC, etc.)
         var clean = outputBuf.replace(/\x1b\][^\x07]*\x07/g, '').replace(/\x1b\[[0-9;?]*[a-zA-Z]/g, '').replace(/\x1b[^[\]]/g, '');
-        // Look for bash prompt: $ anywhere near end of output (MINGW64 format)
         if (!shellReady && /\$\s*$/m.test(clean.slice(-500))) {
           shellReady = true;
           launchBtn.classList.add('visible');
         }
-      };
+      }
 
       // Fallback: show button after 3 seconds regardless
       setTimeout(function () {
@@ -501,10 +503,8 @@
       }, 3000);
 
       launchBtn.addEventListener('click', function () {
-        console.log('[DEBUG] launch button clicked, antigravityLaunched=', antigravityLaunched);
         if (antigravityLaunched) return;
         antigravityLaunched = true;
-        console.log('[DEBUG] antigravityLaunched set to true');
         launchBtn.classList.remove('visible');
         launchBtn.classList.add('fadeout');
         setTimeout(function () { launchBtn.remove(); }, 400);
@@ -568,19 +568,17 @@
           if (/^\*\*/.test(line)) continue;
           // Skip markdown checkboxes, headers, and status lines
           if (/^\[[ x]\]/.test(line) || /^#+\s/.test(line)) continue;
-          console.log('[collectMenuItems] line:', JSON.stringify(line));
           var key = null, desc = '', isBullet = false;
           // Pattern 1: emoji keycap numbers 1️⃣~9️⃣
           var m = line.match(/([1-9])\uFE0F?\u20E3\s*(.{2,})/);
-          if (m) { key = m[1]; desc = m[2].slice(0, 30); console.log('[collectMenuItems] P1 hit:', key, desc); }
+          if (m) { key = m[1]; desc = m[2].slice(0, 30); }
           // Pattern 2: number followed by delimiters/spaces, or preceded by dash (- [N] desc)
           if (!key) {
             m = line.match(/^\s*-?\s*\[?([1-9])\]?[.):\u25c6\s]+(.{2,})/);
-            if (m) { key = m[1]; desc = m[2].slice(0, 30); console.log('[collectMenuItems] P2 hit:', key, desc); }
+            if (m) { key = m[1]; desc = m[2].slice(0, 30); }
           }
           // Validate: must contain CJK or meaningful English
           if (key && (!/[\u4e00-\u9fff\u3400-\u4dbf]/.test(desc) && !/[a-zA-Z]{2,}/.test(desc))) {
-            console.log('[collectMenuItems] REJECTED (no CJK/English):', key, desc);
             key = null;
           }
           if (key) {
@@ -601,7 +599,6 @@
               }
             }
             if (!found) {
-              console.log('[collectMenuItems] ADD numbered:', key, label, 'sendText:', sendText);
               menuItems.push({ key: key, label: label, isBullet: false, sendText: sendText });
             }
             continue;
@@ -616,11 +613,8 @@
               if (menuItems[j].key === bkey) { exists = true; break; }
             }
             if (!exists) {
-              console.log('[collectMenuItems] ADD bullet:', bkey, txt);
               menuItems.push({ key: bkey, label: '* ' + txt, isBullet: true, sendText: m[1] });
             }
-          } else {
-            console.log('[collectMenuItems] NO MATCH:', JSON.stringify(line));
           }
         }
       }
@@ -648,14 +642,7 @@
 
       // --- Poll: every 500ms check menuItems and update bar ---
       setInterval(function () {
-        console.log('[DEBUG][setInterval] tick — menuItems.length=', menuItems.length, 'antigravityReady=', antigravityReady, 'antigravityLaunched=', antigravityLaunched);
-        if (menuItems.length > 0) {
-          console.log('[DEBUG][setInterval] menuItems:', JSON.stringify(menuItems));
-        }
-        if (menuItems.length < 2) {
-          console.log('[DEBUG][setInterval] SKIP — less than 2 items');
-          return;
-        }
+        if (menuItems.length < 2) return;
         // Sort: numbered first, then bullets
         var sorted = menuItems.slice().sort(function (a, b) {
           if (a.isBullet !== b.isBullet) return a.isBullet ? 1 : -1;
@@ -663,63 +650,26 @@
         }).slice(0, 12);
         var newKey = sorted.map(function (i) { return i.key + ':' + i.label; }).join('|');
         if (newKey !== menuRenderedKey) {
-          console.log('[quick-bar] rendering', sorted.length, 'items:', sorted.map(function (i) { return i.label; }));
           menuRenderedKey = newKey;
           renderQuickBar(sorted);
-        } else {
-          console.log('[DEBUG][setInterval] no change, skipping render');
         }
       }, 500);
 
-      // Intercept ws messages for menu detection (after antigravity is launched)
-      var origOnMessage2 = ws.onmessage;
-      var antigravityReady = false;
-      console.log('[DEBUG] final onmessage handler installed, antigravityLaunched=', antigravityLaunched);
-      ws.onmessage = function (evt) {
-        console.log('[DEBUG][final-onmsg] *** ENTRY *** evt.data type=', typeof evt.data, 'isArrayBuffer=', evt.data instanceof ArrayBuffer);
-        origOnMessage2(evt);
-        console.log('[DEBUG][final-onmsg] after origOnMessage2, antigravityLaunched=', antigravityLaunched, 'antigravityReady=', antigravityReady);
-        if (!antigravityLaunched) {
-          console.log('[DEBUG][final-onmsg] SKIP — antigravityLaunched is false');
-          return;
+      // Once agy prints its ready banner, auto-send the opening greeting.
+      // (Called from the single ws.onmessage handler above.)
+      function detectAgyReady(text) {
+        menuBuf += text;
+        if (/\? for shortcuts/.test(stripAnsi(menuBuf))) {
+          antigravityReady = true;
+          menuBuf = '';
+          setTimeout(function () {
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send('你好，請照 GEMINI.md 的第一次互動流程開始');
+              setTimeout(function () { ws.send('\r'); }, 100);
+            }
+          }, 300);
         }
-        var text = '';
-        if (evt.data instanceof ArrayBuffer) {
-          text = new TextDecoder().decode(evt.data);
-          console.log('[DEBUG][final-onmsg] received ArrayBuffer, decoded length=', text.length);
-        } else {
-          text = evt.data;
-          console.log('[DEBUG][final-onmsg] received string, length=', text.length);
-        }
-        console.log('[DEBUG][final-onmsg] raw text (first 200 chars):', JSON.stringify(text.slice(0, 200)));
-
-        // Auto-send "hi" when Antigravity is ready for the first time
-        if (!antigravityReady) {
-          menuBuf += text;
-          var cleanCheck = stripAnsi(menuBuf);
-          var hasTypeMsg = /\? for shortcuts/.test(cleanCheck);
-          console.log('[DEBUG][ready-check] menuBuf length=', menuBuf.length, 'cleanCheck length=', cleanCheck.length);
-          console.log('[DEBUG][ready-check] cleanCheck (last 300 chars):', JSON.stringify(cleanCheck.slice(-300)));
-          console.log('[DEBUG][ready-check] regex /? for shortcuts/ match=', hasTypeMsg);
-          if (hasTypeMsg) {
-            antigravityReady = true;
-            menuBuf = '';
-            console.log('[quick-bar] Antigravity ready, auto-sending greeting (GEMINI.md rules auto-load as workspace rules)');
-            setTimeout(function () {
-              if (ws.readyState === WebSocket.OPEN) {
-                ws.send('你好，請照 GEMINI.md 的第一次互動流程開始');
-                setTimeout(function () { ws.send('\r'); }, 100);
-              }
-            }, 300);
-          }
-          return;
-        }
-
-        // Only process output that contains newlines (actual content).
-        // Status bar updates use cursor positioning without newlines — skip.
-        if (!/\n/.test(text)) return;
-        collectMenuItems(text);
-      };
+      }
 
       // Focus terminal on load
       term.focus();
