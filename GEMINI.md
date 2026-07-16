@@ -66,6 +66,7 @@
 | 「修改 XXX 的口吻」「林太太正經」「調整人格」「改活潑一點」 | `marketing-content-factory` 模組 6 |
 | 「檢查環境」「check env」「裝套件」 | `tool-status-checker` |
 | 「更新系統」「更新 SOP」「升級技能」 | 執行 `./ai-sandbox-<平台> refresh-skills`(只更新 SOP,人格與帳密不動),跑完提醒使用者重開 Antigravity |
+| 「匯入舊版」「從舊版搬人格」「舊的設定拿過來」 | 先跑 `ai-sandbox migrate`(自動掃描列出舊安裝),或 `ai-sandbox migrate --from "<舊資料夾路徑>"` 匯入(只搬乾淨的人格+WordPress設定,舊資料夾不動)。不確定先加 `--dry-run` 預覽 |
 
 ---
 
