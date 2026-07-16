@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -88,13 +89,13 @@ func TestMigrateCleansWPConfigAndInfersAuth(t *testing.T) {
 	}
 }
 
-func TestMigrateNeverOverwritesExisting(t *testing.T) {
+func TestMigrateNeverOverwritesExistingFile(t *testing.T) {
 	old := t.TempDir()
 	buildOldInstall(t, old, ".agents/skills", map[string]map[string]string{
 		"lin": {"persona.md": "# OLD", "wp-config.json": "{}"},
 	})
 	target := filepath.Join(t.TempDir(), "personas")
-	// pre-existing persona in target with different content
+	// persona.md already present (e.g. seeded), wp-config absent.
 	existing := filepath.Join(target, "lin")
 	if err := os.MkdirAll(existing, 0o755); err != nil {
 		t.Fatal(err)
@@ -107,12 +108,80 @@ func TestMigrateNeverOverwritesExisting(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rep.Skipped != 1 || rep.Imported != 0 {
-		t.Fatalf("expected skip, got %+v", rep)
+	// Merge: persona.md kept, wp-config filled in.
+	if rep.Merged != 1 || rep.Imported != 0 || rep.Skipped != 0 {
+		t.Fatalf("expected merge, got %+v", rep)
 	}
-	b, _ := os.ReadFile(filepath.Join(existing, "persona.md"))
-	if string(b) != "# KEEP ME" {
-		t.Error("existing persona was overwritten")
+	if b, _ := os.ReadFile(filepath.Join(existing, "persona.md")); string(b) != "# KEEP ME" {
+		t.Error("existing persona.md was overwritten")
+	}
+	if _, err := os.Stat(filepath.Join(existing, "wp-config.json")); err != nil {
+		t.Error("missing wp-config.json should have been merged in")
+	}
+}
+
+func TestMigrateMergesSeededPersonaWpConfig(t *testing.T) {
+	// Reproduces the mrs-lin case: seed pre-creates persona.md (no wp-config);
+	// migrate must still import the old wp-config.
+	old := t.TempDir()
+	buildOldInstall(t, old, ".gemini/skills", map[string]map[string]string{
+		"mrs-lin": {"persona.md": "# old lin", "wp-config.json": `{"WP_URL":"https://lin.com","WP_APP_PWD":"p"}`},
+	})
+	target := filepath.Join(t.TempDir(), "personas")
+	seeded := filepath.Join(target, "mrs-lin")
+	os.MkdirAll(seeded, 0o755)
+	os.WriteFile(filepath.Join(seeded, "persona.md"), []byte("# seeded lin"), 0o644)
+
+	rep, err := Migrate(old, target, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rep.Merged != 1 {
+		t.Fatalf("expected merged=1, got %+v", rep)
+	}
+	if _, err := os.Stat(filepath.Join(seeded, "wp-config.json")); err != nil {
+		t.Error("old mrs-lin wp-config must be merged into the seeded persona")
+	}
+	if b, _ := os.ReadFile(filepath.Join(seeded, "persona.md")); string(b) != "# seeded lin" {
+		t.Error("seeded persona.md must be preserved")
+	}
+}
+
+func TestMigrateSkipsWhenFullyPresent(t *testing.T) {
+	old := t.TempDir()
+	buildOldInstall(t, old, ".agents/skills", map[string]map[string]string{
+		"lin": {"persona.md": "# a", "wp-config.json": "{}"},
+	})
+	target := filepath.Join(t.TempDir(), "personas")
+	dst := filepath.Join(target, "lin")
+	os.MkdirAll(dst, 0o755)
+	os.WriteFile(filepath.Join(dst, "persona.md"), []byte("x"), 0o644)
+	os.WriteFile(filepath.Join(dst, "wp-config.json"), []byte("{}"), 0o644)
+
+	rep, err := Migrate(old, target, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rep.Skipped != 1 || rep.Merged != 0 || rep.Imported != 0 {
+		t.Fatalf("expected skip when nothing missing, got %+v", rep)
+	}
+}
+
+func TestScanDedupsSlugPrefersAgents(t *testing.T) {
+	root := t.TempDir()
+	// same slug in both layouts
+	buildOldInstall(t, root, ".gemini/skills", map[string]map[string]string{
+		"lin": {"persona.md": "# gemini"},
+	})
+	buildOldInstall(t, root, ".agents/skills", map[string]map[string]string{
+		"lin": {"persona.md": "# agents"},
+	})
+	got := Scan(root)
+	if len(got) != 1 {
+		t.Fatalf("expected 1 deduped persona, got %d: %+v", len(got), got)
+	}
+	if !strings.Contains(filepath.ToSlash(got[0].Dir), "/.agents/") {
+		t.Errorf("expected .agents layout to win, got %s", got[0].Dir)
 	}
 }
 
@@ -168,7 +237,7 @@ func TestFindCandidates(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := FindCandidates([]string{search})
-	if len(got) != 1 || filepath.Base(got[0]) != "old-pkg" {
-		t.Fatalf("expected [old-pkg], got %v", got)
+	if len(got) != 1 || filepath.Base(got[0].Path) != "old-pkg" || got[0].Count != 1 {
+		t.Fatalf("expected [old-pkg count=1], got %+v", got)
 	}
 }

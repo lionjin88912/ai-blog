@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/ai-sandbox/cli/internal/config"
 	"github.com/ai-sandbox/cli/internal/migrate"
@@ -41,19 +42,26 @@ what it finds.`,
 			}
 			fmt.Println("找到可能的舊安裝(含人格):")
 			for _, c := range cands {
-				fmt.Printf("  • %s(%d 個人格)\n", c, len(migrate.Scan(c)))
+				fmt.Printf("  • %s(%d 個人格)\n", c.Path, c.Count)
 			}
 			fmt.Println("\n要匯入其中一個,請用:ai-blog migrate --from \"<上面的路徑>\"")
 			fmt.Println("先預覽不寫入,可加 --dry-run")
 			return nil
 		}
 
-		rep, err := migrate.Migrate(migrateFrom, target, migrateDryRun)
+		// Resolve a relative --from against the directory the user launched from
+		// (enterDataDir has already chdir'd to the data dir).
+		from := migrateFrom
+		if !filepath.IsAbs(from) {
+			from = filepath.Join(OriginalWD(), from)
+		}
+
+		rep, err := migrate.Migrate(from, target, migrateDryRun)
 		if err != nil {
 			return err
 		}
 		fmt.Print(migrate.FormatReport(rep))
-		if rep.Imported > 0 && !migrateDryRun {
+		if (rep.Imported+rep.Merged) > 0 && !migrateDryRun {
 			fmt.Println("完成。重開 Antigravity 後即可看到匯入的人格。舊資料夾未更動,確認無誤後可自行刪除。")
 		}
 		return nil

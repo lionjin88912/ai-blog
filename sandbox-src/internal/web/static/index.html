@@ -320,21 +320,33 @@
       // ws.onmessage wrappers that were hard to follow.)
       var outputBuf = '';
       var antigravityReady = false;
+      function decodeMsg(evt) {
+        return (evt.data instanceof ArrayBuffer) ? new TextDecoder().decode(evt.data) : evt.data;
+      }
+      function msgHasNewline(evt) {
+        if (evt.data instanceof ArrayBuffer) {
+          var u8 = new Uint8Array(evt.data);
+          for (var i = 0; i < u8.length; i++) if (u8[i] === 10) return true;
+          return false;
+        }
+        return evt.data.indexOf('\n') !== -1;
+      }
       ws.onmessage = function (evt) {
         if (evt.data instanceof ArrayBuffer) {
           term.write(new Uint8Array(evt.data));
         } else {
           term.write(evt.data);
         }
-        var text = (evt.data instanceof ArrayBuffer)
-          ? new TextDecoder().decode(evt.data)
-          : evt.data;
+        // Decode only when a phase actually needs the text. In steady state
+        // (launched + ready) the quick-bar only cares about chunks containing a
+        // newline, so skip the full UTF-8 decode of frequent cursor/status
+        // updates that carry none.
         if (!antigravityLaunched) {
-          detectShellPrompt(text);
+          detectShellPrompt(decodeMsg(evt));
         } else if (!antigravityReady) {
-          detectAgyReady(text);
-        } else if (/\n/.test(text)) {
-          collectMenuItems(text);
+          detectAgyReady(decodeMsg(evt));
+        } else if (msgHasNewline(evt)) {
+          collectMenuItems(decodeMsg(evt));
         }
       };
 

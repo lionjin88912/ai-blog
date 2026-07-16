@@ -1,4 +1,4 @@
-.PHONY: build run clean test build-all docker-build seed-sync seed-clean icon
+.PHONY: build run clean test build-all docker-build seed-sync seed-clean icon icon-check
 
 BINARY=ai-blog
 ifeq ($(OS),Windows_NT)
@@ -45,7 +45,14 @@ clean:
 test:
 	go test ./...
 
-build-all: seed-sync
+# Warn (don't fail) if the committed Windows icon resource is older than the
+# icon source, so an edited icon.svg isn't silently shipped with the old icon.
+icon-check:
+	@if [ build/icon.svg -nt resource_windows_amd64.syso ]; then \
+		echo "⚠️  build/icon.svg 比 resource_windows_amd64.syso 新 — 跑 'make icon' 重生成圖示再 build"; \
+	fi
+
+build-all: icon-check seed-sync
 	GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o dist/ai-blog-linux-amd64 .
 	GOOS=darwin GOARCH=amd64 go build -ldflags "-s -w" -o dist/ai-blog-darwin-amd64 .
 	GOOS=darwin GOARCH=arm64 go build -ldflags "-s -w" -o dist/ai-blog-darwin-arm64 .

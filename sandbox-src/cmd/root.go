@@ -32,12 +32,23 @@ Get started:
 	Version: version,
 }
 
+// origWD is the working directory at process start, captured before
+// enterDataDir chdir's away. Commands that take a user-supplied relative path
+// (e.g. `migrate --from ./old`) must resolve it against this, not the data dir.
+var origWD string
+
+// OriginalWD returns the directory the user launched the command from.
+func OriginalWD() string { return origWD }
+
 // enterDataDir moves into the per-user data directory (config.DataDir) unless
 // the user explicitly picked a --dir. This is what lets the exe live in
 // Downloads and act as a pure launcher: the .bat entry point runs `web`, which
 // lands here just like the double-click path in main.go, so nothing scatters
 // next to the exe.
 func enterDataDir(cmd *cobra.Command, args []string) error {
+	if wd, err := os.Getwd(); err == nil {
+		origWD = wd
+	}
 	if rootCmd.PersistentFlags().Changed("dir") {
 		return nil // developer explicitly chose a sandbox location
 	}
