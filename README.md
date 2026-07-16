@@ -15,13 +15,18 @@ A portable, zero-install AI development sandbox. Double-click to launch a browse
   - `tool-status-checker` — environment verification + auto venv setup
   - Built-in persona: `mrs-lin-slow-travel` (林太, 58yo retired teacher, slow-travel cultural blog)
 
+## Download (always latest)
+
+- **Windows:** https://github.com/lionjin88912/ai-blog/releases/latest/download/ai-blog-windows-amd64.exe
+- **All platforms:** https://github.com/lionjin88912/ai-blog/releases/latest
+
 ## Quick Start
 
 ### Windows
 
-1. Download `ai-blog-windows-amd64.exe`
+1. Download `ai-blog-windows-amd64.exe` from the link above
 2. Double-click — it auto-downloads tools and opens a browser terminal
-3. Type `gemini` to start chatting
+3. Click **Launch Antigravity**, then just start chatting
 
 ### macOS / Linux
 
