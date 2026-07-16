@@ -1,4 +1,4 @@
-# AI Sandbox CLI
+# AI Blog 部落格 CLI
 
 A portable, zero-install AI development sandbox. Double-click to launch a browser-based terminal with Gemini CLI, GitHub Copilot CLI, Python, Node.js, and Git — all self-contained, no system dependencies required.
 
@@ -19,15 +19,15 @@ A portable, zero-install AI development sandbox. Double-click to launch a browse
 
 ### Windows
 
-1. Download `ai-sandbox-windows-amd64.exe`
+1. Download `ai-blog-windows-amd64.exe`
 2. Double-click — it auto-downloads tools and opens a browser terminal
 3. Type `gemini` to start chatting
 
 ### macOS / Linux
 
 ```bash
-chmod +x ai-sandbox-darwin-arm64   # or ai-sandbox-linux-amd64
-./ai-sandbox-darwin-arm64
+chmod +x ai-blog-darwin-arm64   # or ai-blog-linux-amd64
+./ai-blog-darwin-arm64
 ```
 
 The browser opens automatically with a terminal connected to your shell.
@@ -35,19 +35,19 @@ The browser opens automatically with a terminal connected to your shell.
 ## CLI Commands
 
 ```
-ai-sandbox init      Configure API keys and workspace path
-ai-sandbox setup     Download all tools to ./sandbox/
-ai-sandbox shell     Open a local terminal with sandbox tools in PATH
-ai-sandbox web       Open a browser-based terminal
-ai-sandbox status    Show installed tool versions
-ai-sandbox clean     Remove the sandbox directory
+ai-blog init      Configure API keys and workspace path
+ai-blog setup     Download all tools to ./sandbox/
+ai-blog shell     Open a local terminal with sandbox tools in PATH
+ai-blog web       Open a browser-based terminal
+ai-blog status    Show installed tool versions
+ai-blog clean     Remove the sandbox directory
 ```
 
 ### Global Flags
 
 ```
 -d, --dir string     Sandbox directory path (default "./sandbox")
--h, --help           Help for ai-sandbox
+-h, --help           Help for ai-blog
     --version        Print version
 ```
 
@@ -65,10 +65,10 @@ ai-sandbox clean     Remove the sandbox directory
 ## Architecture
 
 ```
-ai-sandbox(.exe)          Single binary (Go)
+ai-blog(.exe)          Single binary (Go)
 ├── cmd/                  CLI commands (cobra)
 ├── internal/
-│   ├── config/           Config management (~/.ai-sandbox/config.json)
+│   ├── config/           Config management (~/.ai-blog/config.json)
 │   ├── toolchain/        Download & manage portable tools
 │   └── web/              Web terminal server
 │       ├── server.go         HTTP server + static files
@@ -110,7 +110,7 @@ Outputs all platform binaries to `./dist/`.
 ### Build (local, current platform only)
 
 ```bash
-go build -o ai-sandbox .
+go build -o ai-blog .
 ```
 
 ### Project Structure

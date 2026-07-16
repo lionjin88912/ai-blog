@@ -38,7 +38,7 @@ _嗨,我是你的行銷內容助手。我可以幫你產出文章並自動發布
 
 ### 第一步:打開瀏覽器終端機,啟動 Gemini
 
-雙擊 `ai-sandbox-darwin-arm64`(或 Windows 上的 .exe),瀏覽器自動跳出後在裡面打:
+雙擊 `ai-blog-darwin-arm64`(或 Windows 上的 .exe),瀏覽器自動跳出後在裡面打:
 
 ```
 gemini

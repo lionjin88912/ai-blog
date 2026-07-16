@@ -1,12 +1,24 @@
-.PHONY: build run clean test build-all docker-build seed-sync seed-clean
+.PHONY: build run clean test build-all docker-build seed-sync seed-clean icon
 
-BINARY=ai-sandbox
+BINARY=ai-blog
 ifeq ($(OS),Windows_NT)
-	BINARY=ai-sandbox.exe
+	BINARY=ai-blog.exe
 endif
 
 REPO_ROOT=..
 SEED_DIR=internal/seed/content
+
+# Regenerate the Windows exe icon/version resource from build/icon.svg.
+# Requires macOS (sips) + goversioninfo. The resulting .syso is committed so a
+# plain `make build-all` picks up the icon without this toolchain.
+#   To change the icon: edit build/icon.svg, run `make icon`, then build-all.
+icon:
+	@test -x build/goversioninfo || GOBIN=$(PWD)/build go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
+	@for s in 16 32 48 64 128 256; do sips -z $$s $$s -s format png build/icon.svg --out build/i-$$s.png >/dev/null; done
+	python3 build/mkico.py build
+	./build/goversioninfo -64 -o resource_windows_amd64.syso build/versioninfo.json
+	@rm -f build/i-*.png
+	@echo "icon resource regenerated (resource_windows_amd64.syso)"
 
 # Populate the embedded seed from the repo root via a cross-platform Go tool
 # (works on Windows; no rsync/cp/printf). User state and untracked local
@@ -27,17 +39,17 @@ run: build
 	./$(BINARY)
 
 clean:
-	rm -f ai-sandbox ai-sandbox.exe
+	rm -f ai-blog ai-blog.exe
 	rm -rf dist/
 
 test:
 	go test ./...
 
 build-all: seed-sync
-	GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o dist/ai-sandbox-linux-amd64 .
-	GOOS=darwin GOARCH=amd64 go build -ldflags "-s -w" -o dist/ai-sandbox-darwin-amd64 .
-	GOOS=darwin GOARCH=arm64 go build -ldflags "-s -w" -o dist/ai-sandbox-darwin-arm64 .
-	GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o dist/ai-sandbox-windows-amd64.exe .
+	GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o dist/ai-blog-linux-amd64 .
+	GOOS=darwin GOARCH=amd64 go build -ldflags "-s -w" -o dist/ai-blog-darwin-amd64 .
+	GOOS=darwin GOARCH=arm64 go build -ldflags "-s -w" -o dist/ai-blog-darwin-arm64 .
+	GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o dist/ai-blog-windows-amd64.exe .
 	GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o dist/pwsh.exe ./cmd/pwsh-shim
 
 docker-build:

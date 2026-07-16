@@ -20,15 +20,15 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "ai-sandbox",
-	Short: "AI CLI sandbox manager",
-	Long: `A fully containerized, local AI sandbox environment containing
-Node 22, Python 3.12, Antigravity CLI, GitHub Copilot CLI, and uv.
+	Use:   "ai-blog",
+	Short: "AI Blog 部落格 — 行銷內容自動化",
+	Long: `AI Blog 部落格 — a local, portable environment for the marketing
+content factory: Node 22, Python 3.12, Antigravity CLI, GitHub Copilot CLI, uv.
 
 Get started:
-  ai-sandbox init     Configure API keys and workspace
-  ai-sandbox setup    Download tools to ./sandbox/
-  ai-sandbox shell    Open a shell with sandbox tools in PATH`,
+  ai-blog init     Configure API keys and workspace
+  ai-blog setup    Download tools to ./sandbox/
+  ai-blog shell    Open a shell with sandbox tools in PATH`,
 	Version: version,
 }
 

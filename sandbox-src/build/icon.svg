@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FF7A59"/>
+      <stop offset="1" stop-color="#E23744"/>
+    </linearGradient>
+    <linearGradient id="pen" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFD36B"/>
+      <stop offset="1" stop-color="#F5A623"/>
+    </linearGradient>
+  </defs>
+
+  <!-- rounded-square app background -->
+  <rect x="8" y="8" width="240" height="240" rx="54" fill="url(#bg)"/>
+
+  <!-- blog article/document -->
+  <rect x="60" y="52" width="112" height="150" rx="14" fill="#ffffff"/>
+  <rect x="80" y="82" width="72" height="11" rx="5.5" fill="#FBC0B4"/>
+  <rect x="80" y="106" width="72" height="11" rx="5.5" fill="#FBC0B4"/>
+  <rect x="80" y="130" width="48" height="11" rx="5.5" fill="#FBC0B4"/>
+
+  <!-- pencil writing on it (diagonal) -->
+  <g transform="rotate(45 168 168)">
+    <rect x="150" y="150" width="26" height="86" rx="6" fill="url(#pen)"/>
+    <rect x="150" y="150" width="26" height="14" fill="#F48FB1"/>
+    <path d="M150 236 L163 258 L176 236 Z" fill="#5A4632"/>
+    <path d="M158 244 L163 252 L168 244 Z" fill="#2B2B2B"/>
+  </g>
+
+  <!-- AI sparkle -->
+  <path d="M188 66
+           C190 84 196 90 214 92
+           C196 94 190 100 188 118
+           C186 100 180 94 162 92
+           C180 90 186 84 188 66 Z"
+        fill="#FFE08A"/>
+</svg>

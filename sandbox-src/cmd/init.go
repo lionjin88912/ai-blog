@@ -31,7 +31,7 @@ var initCmd = &cobra.Command{
 
 		fmt.Println()
 		fmt.Println("✅ Configuration saved!")
-		fmt.Println("Run 'ai-sandbox setup' to download tools.")
+		fmt.Println("Run 'ai-blog setup' to download tools.")
 		return nil
 	},
 }

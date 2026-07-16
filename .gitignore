@@ -15,6 +15,7 @@
 sandbox/
 .venv/
 node_modules/
+ai-blog-*
 ai-sandbox-*
 
 # ============================================================
@@ -93,7 +94,7 @@ desktop.ini
 # ============================================================
 sandbox-src/internal/seed/content/*
 !sandbox-src/internal/seed/content/README.md
-sandbox-src/ai-sandbox
+sandbox-src/ai-blog
 sandbox-src/dist/
 
 # ============================================================
@@ -103,3 +104,6 @@ sandbox-src/dist/
 .agents/skills/persona-writer/personas/*/
 !.agents/skills/persona-writer/personas/_template/
 !.agents/skills/persona-writer/personas/mrs-lin-slow-travel/
+
+# icon 工具鏈(syso/ico/json 要進 git,工具本體不用)
+sandbox-src/build/goversioninfo

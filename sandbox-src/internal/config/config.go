@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	configDirName  = ".ai-sandbox"
+	configDirName  = ".ai-blog"
 	configFileName = "config.json"
 	configFileMode = 0600
 	configDirMode  = 0700
@@ -40,7 +40,7 @@ func DefaultConfig() *Config {
 //	macOS:   ~/Library/Application Support/ai-sandbox
 //	Linux:   $XDG_DATA_HOME/ai-sandbox  (or ~/.local/share/ai-sandbox)
 func DataDir() (string, error) {
-	const app = "ai-sandbox"
+	const app = "ai-blog"
 	switch runtime.GOOS {
 	case "windows":
 		if la := os.Getenv("LOCALAPPDATA"); la != "" {

@@ -23,7 +23,7 @@ var shellCmd = &cobra.Command{
 
 		binDir := toolchain.SandboxBinDir(absDir)
 		if _, err := os.Stat(binDir); os.IsNotExist(err) {
-			return fmt.Errorf("sandbox not set up. Run 'ai-sandbox setup' first")
+			return fmt.Errorf("sandbox not set up. Run 'ai-blog setup' first")
 		}
 
 		newPath := binDir + string(os.PathListSeparator) + os.Getenv("PATH")

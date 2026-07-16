@@ -54,7 +54,7 @@ uv, and Python 3.12 to the ./sandbox/ directory.`,
 		}
 
 		fmt.Println("✅ Sandbox ready!")
-		fmt.Printf("Run 'ai-sandbox shell' to open a shell with all tools in PATH.\n")
+		fmt.Printf("Run 'ai-blog shell' to open a shell with all tools in PATH.\n")
 		return nil
 	},
 }

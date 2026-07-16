@@ -36,14 +36,14 @@ what it finds.`,
 			cands := migrate.FindCandidates(migrate.DefaultSearchDirs())
 			if len(cands) == 0 {
 				fmt.Println("沒有在 Downloads/Desktop/Documents 找到含人格的舊資料夾。")
-				fmt.Println("若知道舊資料夾位置,請用:ai-sandbox migrate --from \"<路徑>\"")
+				fmt.Println("若知道舊資料夾位置,請用:ai-blog migrate --from \"<路徑>\"")
 				return nil
 			}
 			fmt.Println("找到可能的舊安裝(含人格):")
 			for _, c := range cands {
 				fmt.Printf("  • %s(%d 個人格)\n", c, len(migrate.Scan(c)))
 			}
-			fmt.Println("\n要匯入其中一個,請用:ai-sandbox migrate --from \"<上面的路徑>\"")
+			fmt.Println("\n要匯入其中一個,請用:ai-blog migrate --from \"<上面的路徑>\"")
 			fmt.Println("先預覽不寫入,可加 --dry-run")
 			return nil
 		}

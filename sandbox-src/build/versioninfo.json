@@ -1,0 +1,15 @@
+{
+  "FixedFileInfo": {
+    "FileVersion": {"Major": 0, "Minor": 1, "Patch": 0, "Build": 0},
+    "ProductVersion": {"Major": 0, "Minor": 1, "Patch": 0, "Build": 0}
+  },
+  "StringFileInfo": {
+    "ProductName": "AI Blog 部落格",
+    "FileDescription": "AI Blog 部落格 — 行銷內容自動化",
+    "CompanyName": "Lion Travel",
+    "InternalName": "ai-blog",
+    "OriginalFilename": "ai-blog-windows-amd64.exe",
+    "LegalCopyright": ""
+  },
+  "IconPath": "build/ai-blog.ico"
+}

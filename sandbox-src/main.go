@@ -173,7 +173,7 @@ func main() {
 	go openBrowser(url)
 
 	// Start web server (blocks until Ctrl+C)
-	log.Printf("🌐 AI Sandbox Terminal: %s", url)
+	log.Printf("🌐 AI Blog 部落格: %s", url)
 	log.Println("   Press Ctrl+C to stop.")
 	log.Fatal(web.Serve(addr, absDir, shellBin, shellArgs, env, "", cmd.AppVersion()))
 }
