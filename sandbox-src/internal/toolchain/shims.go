@@ -24,6 +24,7 @@ func WriteShims(sandboxDir string, p Platform) error {
 		{"copilot", CopilotBinPath(sandboxDir, p)},
 		{"uv", UVBinPath(sandboxDir, p)},
 		{"python", PythonBinPath(sandboxDir, p)},
+		{"python3", PythonBinPath(sandboxDir, p)}, // SOPs call python3; needed in native cmd mode
 		{"git", GitBinPath(sandboxDir, p)},
 		{"agy", AntigravityBinPath(sandboxDir, p)},
 	}

@@ -522,7 +522,13 @@
         launchBtn.classList.add('fadeout');
         setTimeout(function () { launchBtn.remove(); }, 400);
         if (ws.readyState === WebSocket.OPEN) {
-          var agyCmd = 'export PATH="$(pwd)/sandbox/antigravity:$PATH" && agy' + (geminiFlags ? ' ' + geminiFlags : '') + '\n';
+          // Clear SHELL + MSYSTEM for agy only: it is a native Windows binary
+          // whose command sandbox needs Windows paths (C:\...). Inheriting the
+          // git-bash MSYS environment made it resolve its readwrite root to "/",
+          // which Windows rejects as non-absolute — so every command the agent
+          // ran failed. Running agy without those makes it use native cmd.exe
+          // (and the .cmd shims in sandbox/bin). Harmless no-op on macOS/Linux.
+          var agyCmd = 'export PATH="$(pwd)/sandbox/antigravity:$PATH" && SHELL= MSYSTEM= agy' + (geminiFlags ? ' ' + geminiFlags : '') + '\n';
           ws.send(agyCmd);
         }
         term.focus();
