@@ -65,8 +65,8 @@
 | 「新增寫手」「建立人格」「我想多一個人格」「我想做美食家」 | `marketing-content-factory` 模組 5 |
 | 「修改 XXX 的口吻」「林太太正經」「調整人格」「改活潑一點」 | `marketing-content-factory` 模組 6 |
 | 「檢查環境」「check env」「裝套件」 | `tool-status-checker` |
-| 「更新系統」「更新 SOP」「升級技能」 | 執行 `./ai-sandbox-<平台> refresh-skills`(只更新 SOP,人格與帳密不動),跑完提醒使用者重開 Antigravity |
-| 「匯入舊版」「從舊版搬人格」「舊的設定拿過來」 | 先跑 `ai-sandbox migrate`(自動掃描列出舊安裝),或 `ai-sandbox migrate --from "<舊資料夾路徑>"` 匯入(只搬乾淨的人格+WordPress設定,舊資料夾不動)。不確定先加 `--dry-run` 預覽 |
+| 「更新系統」「更新 SOP」「升級技能」 | 執行 `./ai-blog-<平台> refresh-skills`(只更新 SOP,人格與帳密不動),跑完提醒使用者重開 Antigravity |
+| 「匯入舊版」「從舊版搬人格」「舊的設定拿過來」 | 先跑 `ai-blog migrate`(自動掃描列出舊安裝),或 `ai-blog migrate --from "<舊資料夾路徑>"` 匯入(只搬乾淨的人格+WordPress設定,舊資料夾不動)。不確定先加 `--dry-run` 預覽 |
 
 ---
 
@@ -126,7 +126,7 @@
 │   ├── tool-status-checker/
 │   ├── wordpress-com-rest-api/
 │   └── translate-zh-tw/
-├── sandbox-src/           # ai-sandbox 工具的 Go 原始碼
+├── sandbox-src/           # ai-blog 工具的 Go 原始碼
 │   ├── cmd/               # CLI 指令(cobra)
 │   ├── internal/
 │   │   ├── config/        # 設定檔處理
@@ -135,7 +135,7 @@
 │   │   └── wizard/        # 互動式安裝選單
 │   ├── main.go / go.mod / Makefile / Dockerfile
 │   └── docker-compose.yml # 跨平台編譯
-├── ai-sandbox-*(.exe/.bat) # 編譯好的執行檔(業務雙擊入口)
+├── ai-blog-*(.exe/.bat) # 編譯好的執行檔(業務雙擊入口)
 ├── docs/                  # 專案文件(_archive/ 為歸檔的舊版 skill)
 ├── GEMINI.md              # 本檔案,agent 啟動時自動載入
 └── HOWTO.md / BOOTSTRAP.md / README.md

@@ -134,6 +134,48 @@
     #diag-btn:hover { filter: brightness(1.1); }
     #diag-btn:active { transform: scale(0.96); }
 
+    /* First-run migrate dialog */
+    #migrate-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: rgba(20, 20, 30, 0.72);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-family: system-ui, "Microsoft JhengHei", sans-serif;
+    }
+    #migrate-overlay.show { display: flex; }
+    #migrate-card {
+      width: min(560px, 92vw);
+      max-height: 86vh;
+      overflow-y: auto;
+      background: #1e1e2e;
+      color: #cdd6f4;
+      border: 1px solid #45475a;
+      border-radius: 16px;
+      padding: 28px 30px;
+      box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
+    }
+    #migrate-card h2 { font-size: 20px; margin-bottom: 10px; }
+    #migrate-desc { font-size: 13px; color: #a6adc8; line-height: 1.6; margin-bottom: 16px; }
+    #migrate-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+    .migrate-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border: 1px solid #45475a; border-radius: 10px;
+      cursor: pointer; font-size: 13px;
+    }
+    .migrate-item:hover { border-color: #89b4fa; }
+    .migrate-item.sel { border-color: #a6e3a1; background: rgba(166, 227, 161, 0.1); }
+    .migrate-item .path { word-break: break-all; }
+    .migrate-item .cnt { margin-left: auto; color: #a6adc8; white-space: nowrap; }
+    #migrate-actions { display: flex; gap: 10px; justify-content: flex-end; }
+    .mbtn { padding: 9px 18px; border: none; border-radius: 9px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .mbtn-ghost { background: transparent; color: #a6adc8; border: 1px solid #45475a; }
+    .mbtn-primary { background: #a6e3a1; color: #1e1e2e; }
+    .mbtn-primary:disabled { opacity: 0.4; cursor: default; }
+    #migrate-result { font-size: 13px; margin-top: 14px; white-space: pre-wrap; line-height: 1.6; }
+
     /* Launch Antigravity button */
     #launch-btn {
       position: fixed;
@@ -250,6 +292,18 @@
     <div id="terminal-container"></div>
   </div>
   <button id="launch-btn">🚀 啟動 Antigravity</button>
+  <div id="migrate-overlay">
+    <div id="migrate-card">
+      <h2>偵測到舊版資料</h2>
+      <p id="migrate-desc">要把舊版的人格與 WordPress 設定搬過來嗎?(只讀舊資料夾,不會更動它;帳密照搬,舊版格式會自動清理)</p>
+      <div id="migrate-list"></div>
+      <div id="migrate-actions">
+        <button id="migrate-skip" class="mbtn mbtn-ghost">略過,全新開始</button>
+        <button id="migrate-go" class="mbtn mbtn-primary" disabled>匯入選取的資料夾</button>
+      </div>
+      <div id="migrate-result"></div>
+    </div>
+  </div>
   <div id="sys-bar">
     <span id="sys-badge">loading…</span>
     <button id="diag-btn" title="下載診斷包(不含任何密碼),回報問題時把檔案傳給工程師">📦 匯出診斷包</button>
@@ -496,6 +550,55 @@
       document.getElementById('diag-btn').addEventListener('click', function () {
         window.location.href = '/api/diagnostic';
       });
+
+      // --- First-run: offer to import personas/WordPress from an old install ---
+      (function initMigrate() {
+        if (localStorage.getItem('migrate-dismissed') === '1') return;
+        fetch('/api/migrate/scan').then(function (r) { return r.json(); }).then(function (d) {
+          var cands = (d && d.candidates) || [];
+          if (!cands.length) return;
+          var overlay = document.getElementById('migrate-overlay');
+          var list = document.getElementById('migrate-list');
+          var goBtn = document.getElementById('migrate-go');
+          var result = document.getElementById('migrate-result');
+          var selected = null;
+          cands.forEach(function (c) {
+            var el = document.createElement('div');
+            el.className = 'migrate-item';
+            el.innerHTML = '<span class="path"></span><span class="cnt"></span>';
+            el.querySelector('.path').textContent = c.path;
+            el.querySelector('.cnt').textContent = c.count + ' 個人格';
+            el.addEventListener('click', function () {
+              selected = c.path;
+              Array.prototype.forEach.call(list.children, function (n) { n.classList.remove('sel'); });
+              el.classList.add('sel');
+              goBtn.disabled = false;
+            });
+            list.appendChild(el);
+          });
+          overlay.classList.add('show');
+
+          document.getElementById('migrate-skip').addEventListener('click', function () {
+            localStorage.setItem('migrate-dismissed', '1');
+            overlay.classList.remove('show');
+          });
+          goBtn.addEventListener('click', function () {
+            if (!selected) return;
+            goBtn.disabled = true;
+            result.textContent = '匯入中…';
+            fetch('/api/migrate/run?from=' + encodeURIComponent(selected))
+              .then(function (r) { return r.json(); })
+              .then(function (rep) {
+                if (rep.error) { result.textContent = '❌ ' + rep.error; goBtn.disabled = false; return; }
+                result.textContent = '✅ 完成:匯入 ' + rep.imported + '、補齊 ' + rep.merged +
+                  '、跳過 ' + rep.skipped + '、失敗 ' + rep.errored + '。舊資料夾未更動。';
+                localStorage.setItem('migrate-dismissed', '1');
+                setTimeout(function () { overlay.classList.remove('show'); }, 2600);
+              })
+              .catch(function (e) { result.textContent = '❌ ' + e; goBtn.disabled = false; });
+          });
+        }).catch(function () { /* scan failed — silently skip the offer */ });
+      })();
 
       // Show the Launch button once the shell prompt appears.
       function detectShellPrompt(text) {
