@@ -26,6 +26,11 @@ var shellCmd = &cobra.Command{
 			return fmt.Errorf("sandbox not set up. Run 'ai-blog setup' first")
 		}
 
+		// Refresh shims so a new exe's fixes apply without a reinstall.
+		if err := toolchain.WriteShims(absDir, toolchain.DetectPlatform()); err != nil {
+			fmt.Printf("⚠️  Shim regeneration failed: %v\n", err)
+		}
+
 		newPath := binDir + string(os.PathListSeparator) + os.Getenv("PATH")
 
 		shellBin, shellArgs := ResolveShell(shellFlag, absDir)

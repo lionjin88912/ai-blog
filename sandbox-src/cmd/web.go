@@ -37,6 +37,12 @@ var webCmd = &cobra.Command{
 			return fmt.Errorf("sandbox not set up. Run 'ai-blog setup' first")
 		}
 
+		// Refresh shims on every launch so a new exe's fixes (e.g. the pwsh
+		// shim) apply without a reinstall — same as the double-click path.
+		if err := toolchain.WriteShims(absDir, toolchain.DetectPlatform()); err != nil {
+			fmt.Printf("⚠️  Shim regeneration failed: %v\n", err)
+		}
+
 		// Build PATH: sandbox/bin + git/mingw64/bin + git/usr/bin + system PATH
 		gitDir := filepath.Join(absDir, "git")
 		newPath := binDir
