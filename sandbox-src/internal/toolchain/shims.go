@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/ai-sandbox/cli/internal/pwshshim"
 )
 
 // WriteShims creates wrapper scripts in sandboxDir/bin/ that point to the actual binaries.
@@ -93,46 +95,23 @@ func SandboxBinDir(sandboxDir string) string {
 
 
 
-// writePwshShim creates pwsh.exe in the bin directory.
-// If cmd/pwsh-shim was pre-built as pwsh.exe next to the main binary, copy it.
-// Otherwise fall back to script-based shims.
+// writePwshShim writes the embedded pwsh.exe shim into the bin directory.
+// The shim (cmd/pwsh-shim) delegates to native powershell.exe. Embedding it
+// means the single distributed launcher is self-contained — no pwsh.exe beside
+// the exe and no Go toolchain required on the user's machine.
 func writePwshShim(binDir, bashPath string) error {
-	relBash, err := filepath.Rel(binDir, bashPath)
-	if err != nil {
-		relBash = bashPath
+	if len(pwshshim.Binary) == 0 {
+		return fmt.Errorf("embedded pwsh shim is empty (built without the pwsh embed)")
 	}
-
-	// Try to find a pre-built pwsh.exe next to the running binary
-	self, err := os.Executable()
-	if err == nil {
-		prebuilt := filepath.Join(filepath.Dir(self), "pwsh.exe")
-		if _, err := os.Stat(prebuilt); err == nil {
-			dst := filepath.Join(binDir, "pwsh.exe")
-			if err := copyFile(prebuilt, dst); err != nil {
-				return fmt.Errorf("copy pwsh.exe: %w", err)
-			}
-			return nil
-		}
+	dst := filepath.Join(binDir, "pwsh.exe")
+	if err := os.WriteFile(dst, pwshshim.Binary, 0755); err != nil {
+		return fmt.Errorf("write pwsh.exe: %w", err)
 	}
-
-	// Try to build pwsh.exe on the fly if Go is available
-	if goPath, lookErr := execCommand("go", "env", "GOEXE").CombinedOutput(); lookErr == nil {
-		_ = goPath // go is available
-		dst := filepath.Join(binDir, "pwsh.exe")
-		build := execCommand("go", "build", "-ldflags", "-s -w", "-o", dst, "./cmd/pwsh-shim")
-		if err := build.Run(); err == nil {
-			return nil
-		}
-	}
-
-	// Fallback: .cmd + shell script shims with relative paths
-	batchRel := filepath.ToSlash(relBash)
-	cmdContent := fmt.Sprintf("@echo off\r\n\"%%~dp0%s\" %%*\r\n", batchRel)
-	if err := os.WriteFile(filepath.Join(binDir, "pwsh.cmd"), []byte(cmdContent), 0755); err != nil {
-		return err
-	}
-	shContent := fmt.Sprintf("#!/bin/sh\nexec \"$(dirname \"$0\")/%s\" \"$@\"\n", filepath.ToSlash(relBash))
-	return os.WriteFile(filepath.Join(binDir, "pwsh"), []byte(shContent), 0755)
+	// Remove any stale script fallbacks from older versions so PATH resolves
+	// to pwsh.exe, not a leftover pwsh.cmd/pwsh that delegates to bash.
+	_ = os.Remove(filepath.Join(binDir, "pwsh.cmd"))
+	_ = os.Remove(filepath.Join(binDir, "pwsh"))
+	return nil
 }
 
 func copyFile(src, dst string) error {

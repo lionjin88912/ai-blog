@@ -1,4 +1,4 @@
-.PHONY: build run clean test build-all docker-build seed-sync seed-clean icon icon-check
+.PHONY: build run clean test build-all docker-build seed-sync seed-clean icon icon-check pwsh-embed
 
 BINARY=ai-blog
 ifeq ($(OS),Windows_NT)
@@ -34,7 +34,11 @@ seed-sync:
 seed-clean:
 	go run ./tools/seedsync --clean $(REPO_ROOT) $(SEED_DIR) 2>/dev/null || true
 
-build: seed-sync
+# Rebuild the pwsh.exe shim that gets embedded into the Windows launcher.
+pwsh-embed:
+	GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o internal/pwshshim/pwsh_windows_amd64.exe ./cmd/pwsh-shim
+
+build: pwsh-embed seed-sync
 	go build -ldflags "$(LDFLAGS)" -o $(BINARY) .
 ifeq ($(OS),Windows_NT)
 	go build -ldflags "$(LDFLAGS)" -o sandbox/bin/pwsh.exe ./cmd/pwsh-shim
@@ -57,7 +61,7 @@ icon-check:
 		echo "⚠️  build/icon.svg 比 resource_windows_amd64.syso 新 — 跑 'make icon' 重生成圖示再 build"; \
 	fi
 
-build-all: icon-check seed-sync
+build-all: pwsh-embed icon-check seed-sync
 	GOOS=linux GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o dist/ai-blog-linux-amd64 .
 	GOOS=darwin GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o dist/ai-blog-darwin-amd64 .
 	GOOS=darwin GOARCH=arm64 go build -ldflags "$(LDFLAGS)" -o dist/ai-blog-darwin-arm64 .
