@@ -14,10 +14,10 @@ SEED_DIR=internal/seed/content
 #   To change the icon: edit build/icon.svg, run `make icon`, then build-all.
 icon:
 	@test -x build/goversioninfo || GOBIN=$(PWD)/build go install github.com/josephspurrier/goversioninfo/cmd/goversioninfo@latest
-	@for s in 16 32 48 64 128 256; do sips -z $$s $$s -s format png build/icon.svg --out build/i-$$s.png >/dev/null; done
+	sips -z 512 512 -s format png build/icon.svg --out build/icon-master.png >/dev/null
 	python3 build/mkico.py build
 	./build/goversioninfo -64 -o resource_windows_amd64.syso build/versioninfo.json
-	@rm -f build/i-*.png
+	@rm -f build/icon-master.png
 	@echo "icon resource regenerated (resource_windows_amd64.syso)"
 
 # Populate the embedded seed from the repo root via a cross-platform Go tool

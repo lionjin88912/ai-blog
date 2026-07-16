@@ -1,25 +1,22 @@
 #!/usr/bin/env python3
-"""Pack build/i-<size>.png files into build/ai-blog.ico (multi-resolution,
-PNG-embedded). Usage: python3 mkico.py <build-dir>"""
+"""Build build/ai-blog.ico from build/icon-master.png using Pillow.
+
+Pillow writes classic BMP/DIB icon entries (not PNG) for the small sizes, which
+is what Windows Explorer needs to render the icon — a PNG-only .ico shows up as
+the blank default icon at 16/32 px. Usage: python3 mkico.py <build-dir>
+"""
 import os
-import struct
 import sys
 
-build = sys.argv[1] if len(sys.argv) > 1 else "build"
-sizes = [16, 32, 48, 64, 128, 256]
-imgs = []
-for s in sizes:
-    with open(os.path.join(build, f"i-{s}.png"), "rb") as f:
-        imgs.append((s, f.read()))
+from PIL import Image
 
+build = sys.argv[1] if len(sys.argv) > 1 else "build"
+master = Image.open(os.path.join(build, "icon-master.png")).convert("RGBA")
 out = os.path.join(build, "ai-blog.ico")
-with open(out, "wb") as f:
-    f.write(struct.pack("<HHH", 0, 1, len(imgs)))  # ICONDIR
-    off = 6 + 16 * len(imgs)
-    for s, data in imgs:
-        w = 0 if s >= 256 else s  # 0 means 256 in the ICO spec
-        f.write(struct.pack("<BBBBHHII", w, w, 0, 0, 1, 32, len(data), off))
-        off += len(data)
-    for _, data in imgs:
-        f.write(data)
+master.save(
+    out,
+    format="ICO",
+    sizes=[(16, 16), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)],
+    bitmap_format="bmp",
+)
 print("wrote", out, os.path.getsize(out), "bytes")
