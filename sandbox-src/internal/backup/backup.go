@@ -182,12 +182,12 @@ func keepPersonaPath(rel string) string {
 	if i == -1 {
 		return ""
 	}
-	tail := rel[i+len("persona-writer/personas/"):] // "<slug>/<...>"
+	tail := rel[i+len("persona-writer/personas/"):] // want exactly "<slug>/<file>"
 	parts := strings.Split(tail, "/")
-	if len(parts) < 2 || parts[0] == "" || parts[0] == "_template" {
-		return ""
+	if len(parts) != 2 || parts[0] == "" || parts[0] == "_template" {
+		return "" // not directly under a persona dir (ignore nested/odd paths)
 	}
-	slug, base := parts[0], parts[len(parts)-1]
+	slug, base := parts[0], parts[1]
 	for _, f := range personaFiles {
 		if base == f {
 			return "persona-writer/personas/" + slug + "/" + base

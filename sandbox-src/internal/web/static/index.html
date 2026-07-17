@@ -162,7 +162,8 @@
     #input-row { display: flex; gap: 8px; align-items: flex-end; }
     #input_cmd {
       flex: 1;
-      resize: vertical;       /* user can drag the bottom edge taller */
+      resize: vertical;       /* drag the bottom edge to adjust height */
+      height: 46px;           /* ~1 line by default; grows via drag or 展開 */
       min-height: 40px;
       max-height: 60vh;
       background: #1e1e2e;
@@ -174,6 +175,7 @@
       font-family: system-ui, "Microsoft JhengHei", sans-serif;
       line-height: 1.5;
     }
+    #input_cmd.tall { height: 40vh; }
     #input_cmd:focus { outline: none; border-color: #89b4fa; }
     #input_cmd::placeholder { color: #6c7086; }
     #send-btn {
@@ -355,6 +357,7 @@
       <button data-key="\x09" title="Tab / 自動完成">Tab</button>
       <button data-key="\r" title="Enter / 確認">⏎ Enter</button>
       <button data-key="\x03" title="中斷 Ctrl+C">Ctrl+C</button>
+      <button id="expand-btn" type="button" title="展開/縮小輸入框(貼多行用)">⤢ 展開</button>
     </div>
     <div id="input-row">
       <textarea id="input_cmd" rows="1" placeholder="輸入訊息或指令(例:寫一篇文章、/skills)… Enter 送出"></textarea>
@@ -377,7 +380,8 @@
   <div id="sys-bar">
     <span id="sys-badge">loading…</span>
     <button id="backup-btn" title="匯出人格 + WordPress 設定備份,交接給其他同事(含帳密,請用安全管道傳遞)">💾 匯出備份</button>
-    <button id="importbk-btn" title="從備份檔匯入人格 + WordPress 設定(接手別人的工作)">📂 匯入備份</button>
+    <button id="importzip-btn" title="從備份壓縮檔(.zip)匯入人格 + WordPress 設定">📦 匯入 .zip</button>
+    <button id="importdir-btn" title="從資料夾匯入人格 + WordPress 設定(接手別人的工作)">📂 匯入資料夾</button>
     <button id="diag-btn" title="下載診斷包(不含任何密碼),回報問題時把檔案傳給工程師">📦 匯出診斷包</button>
     <input type="file" id="importbk-file" accept=".zip" style="display:none">
     <input type="file" id="importbk-folder" webkitdirectory directory multiple style="display:none">
@@ -641,17 +645,12 @@
           '、跳過 ' + rep.skipped + '、失敗 ' + rep.errored + '。\n重開 Antigravity 後即可用。');
       }
 
-      document.getElementById('importbk-btn').addEventListener('click', function () {
-        if (confirm('要匯入的是「壓縮檔(.zip)」嗎?\n\n按「確定」選 .zip 檔;按「取消」改選「資料夾」。')) {
-          importFile.click();
-        } else {
-          importFolder.click();
-        }
-      });
+      document.getElementById('importzip-btn').addEventListener('click', function () { importFile.click(); });
+      document.getElementById('importdir-btn').addEventListener('click', function () { importFolder.click(); });
 
       // .zip file → /api/backup/import
       importFile.addEventListener('change', function () {
-        if (!importFile.files.length) return;
+        if (!importFile.files.length) return; // user cancelled the picker
         var fd = new FormData();
         fd.append('file', importFile.files[0]);
         importFile.value = '';
@@ -664,6 +663,7 @@
       importFolder.addEventListener('change', function () {
         var picked = Array.prototype.slice.call(importFolder.files);
         importFolder.value = '';
+        if (!picked.length) return; // user cancelled the folder picker
         var keep = picked.filter(function (f) {
           var p = (f.webkitRelativePath || f.name);
           return /persona-writer\/personas\/[^/]+\/(persona\.md|wp-config\.json|published\.json)$/.test(p);
@@ -786,8 +786,6 @@
       // agy's slash-command palette needs a moment to filter before Enter
       // selects the match. Tunable if it still races on slow machines.
       var PALETTE_SETTLE_MS = 350;
-      var lastInputHeight = 0;
-      var userResized = false;
       var pendingEnter = null;
 
       function dismissLaunch() {
@@ -834,10 +832,13 @@
         }
 
         inputEl.value = '';
-        userResized = false; // collapse back to auto-size after sending
-        inputEl.style.height = 'auto';
-        lastInputHeight = 0;
+        // Collapse the box back to its default size after sending (clears both
+        // 展開 and any manual drag).
+        inputEl.classList.remove('tall');
+        inputEl.style.height = '';
+        setExpandLabel();
         clearMenu();
+        fitAddon.fit();
         inputEl.focus();
       }
 
@@ -849,31 +850,22 @@
           sendCommand();
         }
       });
-      // Auto-grow to fit content (up to 60vh) UNLESS the user has manually
-      // dragged the textarea taller — then honor their height.
-      function autoGrowInput() {
-        if (userResized) return;
-        inputEl.style.height = 'auto';
-        var cap = Math.round(window.innerHeight * 0.6);
-        var h = Math.min(inputEl.scrollHeight, cap);
-        inputEl.style.height = h + 'px';
-        if (h !== lastInputHeight) {
-          lastInputHeight = h;
-          fitAddon.fit();
-        }
-      }
-      inputEl.addEventListener('input', autoGrowInput);
+      // Re-fit the terminal after a manual drag-resize ends (native
+      // resize:vertical). No height math, no observer — just refit on release.
+      inputEl.addEventListener('mouseup', function () { fitAddon.fit(); });
 
-      // Detect a manual drag-resize (height changes to something auto-grow
-      // didn't set) and stop fighting it.
-      if (window.ResizeObserver) {
-        new ResizeObserver(function () {
-          if (Math.abs(inputEl.clientHeight - lastInputHeight) > 3) {
-            userResized = true;
-            fitAddon.fit();
-          }
-        }).observe(inputEl);
+      // Expand / collapse toggle for pasting many lines.
+      var expandBtn = document.getElementById('expand-btn');
+      function setExpandLabel() {
+        expandBtn.textContent = inputEl.classList.contains('tall') ? '⤡ 縮小' : '⤢ 展開';
       }
+      expandBtn.addEventListener('click', function () {
+        inputEl.classList.toggle('tall');
+        inputEl.style.height = ''; // let the .tall class (or default) drive height
+        setExpandLabel();
+        fitAddon.fit();
+        inputEl.focus();
+      });
 
       // Control keys → raw escape sequences into the PTY (for agy menus etc.)
       ctrlKeys.addEventListener('click', function (e) {

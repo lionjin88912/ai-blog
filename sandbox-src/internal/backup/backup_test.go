@@ -107,6 +107,7 @@ func TestImportFilesFromFolder(t *testing.T) {
 		{RelPath: "oldpkg/.gemini/skills/persona-writer/personas/lin/draft.json", Data: []byte(`{"stage":"h1"}`)},        // ignored
 		{RelPath: "oldpkg/.gemini/skills/persona-writer/personas/_template/persona.md", Data: []byte("# t")},           // ignored
 		{RelPath: "oldpkg/random/other.txt", Data: []byte("nope")},                                                     // ignored
+		{RelPath: "oldpkg/.gemini/skills/persona-writer/personas/lin/sub/persona.md", Data: []byte("# nested")},        // ignored (nested)
 	}
 	dst := t.TempDir()
 	rep, err := ImportFiles(files, dst)

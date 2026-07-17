@@ -172,9 +172,17 @@ func Serve(addr, sandboxDir, shellPath string, shellArgs, env []string, geminiFl
 		var files []backup.UploadFile
 		// The relative path is carried in the form FIELD NAME (map key), not the
 		// filename — Go runs FileHeader.Filename through filepath.Base, which
-		// would strip the path we need.
+		// would strip the path we need. Skip non-persona and oversized parts
+		// BEFORE reading them into memory (don't trust the client's filtering).
+		const maxPersonaFile = 5 << 20 // persona.md / wp-config / published are tiny
 		for name, headers := range r.MultipartForm.File {
+			if !strings.Contains(filepath.ToSlash(name), "persona-writer/personas/") {
+				continue
+			}
 			for _, fh := range headers {
+				if fh.Size > maxPersonaFile {
+					continue
+				}
 				f, err := fh.Open()
 				if err != nil {
 					continue
