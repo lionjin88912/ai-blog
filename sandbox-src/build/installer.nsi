@@ -39,6 +39,16 @@ UninstallIcon "ai-blog.ico"
 !insertmacro MUI_LANGUAGE "TradChinese"
 
 Section "Install"
+  ; If AI Blog is running its exe is locked and can't be overwritten. Remind
+  ; the user (no NSIS process plugin, so this is a prompt rather than a kill),
+  ; and use "try" so one locked file doesn't abort the whole install.
+  IfFileExists "$INSTDIR\ai-blog.exe" 0 fresh
+    MessageBox MB_OKCANCEL|MB_ICONEXCLAMATION \
+      "偵測到已安裝的 AI Blog。$\n請先關閉正在執行的 AI Blog(含瀏覽器分頁)再繼續,否則檔案可能無法更新。" \
+      IDOK fresh
+      Abort "已取消:請關閉 AI Blog 後重試。"
+  fresh:
+  SetOverwrite try
   SetOutPath "$INSTDIR"
   File "ai-blog.exe"
   File "ai-blog.ico"

@@ -730,6 +730,10 @@
           var agyCmd = 'export PATH="$(pwd)/sandbox/antigravity:$PATH" && SHELL= MSYSTEM= agy' + (geminiFlags ? ' ' + geminiFlags : '') + '\n';
           ws.send(agyCmd);
         }
+        // Enable the input bar once agy signals ready (detectAgyReady). Fallback:
+        // enable after 20s even if the ready banner wasn't matched, so a version
+        // whose banner differs can't leave the input bar permanently disabled.
+        setTimeout(function () { if (!antigravityReady) setInputEnabled(true); }, 20000);
         term.focus();
       });
 
@@ -738,14 +742,7 @@
         if (ws.readyState === WebSocket.OPEN) {
           ws.send(data);
         }
-        if (!antigravityLaunched && shellReady) {
-          antigravityLaunched = true;
-          launchBtn.classList.remove('visible');
-          launchBtn.classList.add('fadeout');
-          setTimeout(function () { launchBtn.remove(); }, 400);
-        }
-        // Hide quick-bar when user types
-        //clearMenu();
+        dismissLaunch();
         // Hide quick-bar when user presses Enter
         if (data === '\r' || data === '\n') clearMenu();
       });
@@ -753,6 +750,13 @@
       // --- Friendly input bar → types into the terminal (PTY) ---
       var inputEl = document.getElementById('input_cmd');
       var sendBtn = document.getElementById('send-btn');
+      var ctrlKeys = document.getElementById('ctrl-keys');
+
+      // agy's slash-command palette needs a moment to filter before Enter
+      // selects the match. Tunable if it still races on slow machines.
+      var PALETTE_SETTLE_MS = 350;
+      var lastInputHeight = 0;
+      var pendingEnter = null;
 
       function dismissLaunch() {
         if (!antigravityLaunched && shellReady) {
@@ -763,21 +767,44 @@
         }
       }
 
-      // Send a line of input into the PTY. Slash-commands open agy's live
-      // command palette (rendered in the terminal), which needs a moment to
-      // filter before Enter selects the match — so give "/..." a longer settle
-      // delay before the auto-Enter; plain text sends Enter promptly.
+      // The input bar only drives agy, which isn't up until the user clicks
+      // Launch and agy signals ready. Disable it until then so a message typed
+      // early doesn't go to the bare bash shell (and doesn't strand the user by
+      // dismissing the Launch button without starting agy).
+      function setInputEnabled(on) {
+        inputEl.disabled = !on;
+        sendBtn.disabled = !on;
+        inputEl.placeholder = on
+          ? '輸入訊息或指令(例:寫一篇文章、/skills)… Enter 送出'
+          : '請先點下方「🚀 啟動 Antigravity」按鈕';
+        if (on) inputEl.focus();
+      }
+      setInputEnabled(false);
+
+      // Send a line of input into the PTY.
+      // - multi-line (Shift+Enter): wrap in bracketed paste so agy takes it as
+      //   one block instead of submitting each line.
+      // - slash-command: send text, then Enter after the palette settles.
+      // - plain single line: send text+Enter atomically (no timer race).
       function sendCommand() {
-        if (ws.readyState !== WebSocket.OPEN) return;
+        if (ws.readyState !== WebSocket.OPEN || inputEl.disabled) return;
         var text = inputEl.value.replace(/\s+$/, '');
         if (!text) return;
-        var isSlash = text.charAt(0) === '/';
-        ws.send(text);
-        setTimeout(function () { ws.send('\r'); }, isSlash ? 350 : 60);
+        if (pendingEnter) { clearTimeout(pendingEnter); pendingEnter = null; }
+
+        if (text.indexOf('\n') !== -1) {
+          ws.send('\x1b[200~' + text + '\x1b[201~\r');
+        } else if (text.charAt(0) === '/') {
+          ws.send(text);
+          pendingEnter = setTimeout(function () { ws.send('\r'); pendingEnter = null; }, PALETTE_SETTLE_MS);
+        } else {
+          ws.send(text + '\r');
+        }
+
         inputEl.value = '';
         inputEl.style.height = 'auto';
+        lastInputHeight = 0;
         clearMenu();
-        dismissLaunch();
         inputEl.focus();
       }
 
@@ -790,13 +817,18 @@
         }
       });
       inputEl.addEventListener('input', function () {
+        // Re-fit the terminal only when the textarea height actually changes.
         this.style.height = 'auto';
-        this.style.height = Math.min(this.scrollHeight, 160) + 'px';
-        fitAddon.fit();
+        var h = Math.min(this.scrollHeight, 160);
+        this.style.height = h + 'px';
+        if (h !== lastInputHeight) {
+          lastInputHeight = h;
+          fitAddon.fit();
+        }
       });
 
       // Control keys → raw escape sequences into the PTY (for agy menus etc.)
-      document.getElementById('ctrl-keys').addEventListener('click', function (e) {
+      ctrlKeys.addEventListener('click', function (e) {
         var btn = e.target.closest('button[data-key]');
         if (!btn || ws.readyState !== WebSocket.OPEN) return;
         var key = btn.getAttribute('data-key')
@@ -804,7 +836,6 @@
           .replace(/\\x03/g, '\x03').replace(/\\x04/g, '\x04')
           .replace(/\\r/g, '\r');
         ws.send(key);
-        dismissLaunch();
         inputEl.focus();
       });
 
@@ -938,6 +969,7 @@
         if (/\? for shortcuts/.test(stripAnsi(menuBuf))) {
           antigravityReady = true;
           menuBuf = '';
+          setInputEnabled(true); // agy is up — the input bar can drive it now
           setTimeout(function () {
             if (ws.readyState === WebSocket.OPEN) {
               ws.send('你好，請照 GEMINI.md 的第一次互動流程開始');
@@ -947,8 +979,8 @@
         }
       }
 
-      // Focus the friendly input box on load (falls back fine if absent).
-      inputEl.focus();
+      // Input bar starts disabled (see setInputEnabled) until agy is ready;
+      // it gets focus at that point, so nothing to focus here.
     })();
   </script>
 </body>
