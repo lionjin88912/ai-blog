@@ -162,8 +162,9 @@
     #input-row { display: flex; gap: 8px; align-items: flex-end; }
     #input_cmd {
       flex: 1;
-      resize: none;
-      max-height: 160px;
+      resize: vertical;       /* user can drag the bottom edge taller */
+      min-height: 40px;
+      max-height: 60vh;
       background: #1e1e2e;
       color: #cdd6f4;
       border: 1px solid #45475a;
@@ -786,6 +787,7 @@
       // selects the match. Tunable if it still races on slow machines.
       var PALETTE_SETTLE_MS = 350;
       var lastInputHeight = 0;
+      var userResized = false;
       var pendingEnter = null;
 
       function dismissLaunch() {
@@ -832,6 +834,7 @@
         }
 
         inputEl.value = '';
+        userResized = false; // collapse back to auto-size after sending
         inputEl.style.height = 'auto';
         lastInputHeight = 0;
         clearMenu();
@@ -846,16 +849,31 @@
           sendCommand();
         }
       });
-      inputEl.addEventListener('input', function () {
-        // Re-fit the terminal only when the textarea height actually changes.
-        this.style.height = 'auto';
-        var h = Math.min(this.scrollHeight, 160);
-        this.style.height = h + 'px';
+      // Auto-grow to fit content (up to 60vh) UNLESS the user has manually
+      // dragged the textarea taller — then honor their height.
+      function autoGrowInput() {
+        if (userResized) return;
+        inputEl.style.height = 'auto';
+        var cap = Math.round(window.innerHeight * 0.6);
+        var h = Math.min(inputEl.scrollHeight, cap);
+        inputEl.style.height = h + 'px';
         if (h !== lastInputHeight) {
           lastInputHeight = h;
           fitAddon.fit();
         }
-      });
+      }
+      inputEl.addEventListener('input', autoGrowInput);
+
+      // Detect a manual drag-resize (height changes to something auto-grow
+      // didn't set) and stop fighting it.
+      if (window.ResizeObserver) {
+        new ResizeObserver(function () {
+          if (Math.abs(inputEl.clientHeight - lastInputHeight) > 3) {
+            userResized = true;
+            fitAddon.fit();
+          }
+        }).observe(inputEl);
+      }
 
       // Control keys → raw escape sequences into the PTY (for agy menus etc.)
       ctrlKeys.addEventListener('click', function (e) {
