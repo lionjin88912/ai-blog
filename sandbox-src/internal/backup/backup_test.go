@@ -99,6 +99,42 @@ func TestImportDoesNotOverwriteExisting(t *testing.T) {
 	}
 }
 
+func TestImportFilesFromFolder(t *testing.T) {
+	// Simulate a browser folder pick: files with arbitrary prefix paths.
+	files := []UploadFile{
+		{RelPath: "oldpkg/.gemini/skills/persona-writer/personas/lin/persona.md", Data: []byte("# lin")},
+		{RelPath: "oldpkg/.gemini/skills/persona-writer/personas/lin/wp-config.json", Data: []byte(`{"WP_URL":"https://l.com","WP_APP_PWD":"p","junk":"x"}`)},
+		{RelPath: "oldpkg/.gemini/skills/persona-writer/personas/lin/draft.json", Data: []byte(`{"stage":"h1"}`)},        // ignored
+		{RelPath: "oldpkg/.gemini/skills/persona-writer/personas/_template/persona.md", Data: []byte("# t")},           // ignored
+		{RelPath: "oldpkg/random/other.txt", Data: []byte("nope")},                                                     // ignored
+	}
+	dst := t.TempDir()
+	rep, err := ImportFiles(files, dst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rep.Imported != 1 {
+		t.Fatalf("expected 1 imported, got %+v", rep)
+	}
+	base := filepath.Join(migrate.TargetPersonasDir(dst), "lin")
+	if _, err := os.Stat(filepath.Join(base, "wp-config.json")); err != nil {
+		t.Error("wp-config not imported")
+	}
+	if _, err := os.Stat(filepath.Join(base, "draft.json")); !os.IsNotExist(err) {
+		t.Error("draft.json must not be imported")
+	}
+	if _, err := os.Stat(filepath.Join(migrate.TargetPersonasDir(dst), "_template")); !os.IsNotExist(err) {
+		t.Error("_template must not be imported")
+	}
+}
+
+func TestImportFilesEmptyErrors(t *testing.T) {
+	files := []UploadFile{{RelPath: "some/folder/readme.txt", Data: []byte("x")}}
+	if _, err := ImportFiles(files, t.TempDir()); err == nil {
+		t.Error("expected error when no persona files present")
+	}
+}
+
 func TestExportEmptyErrors(t *testing.T) {
 	if _, _, err := Export(t.TempDir(), time.Unix(1700000000, 0)); err == nil {
 		t.Error("expected error exporting a workspace with no personas")

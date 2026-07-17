@@ -379,6 +379,7 @@
     <button id="importbk-btn" title="從備份檔匯入人格 + WordPress 設定(接手別人的工作)">📂 匯入備份</button>
     <button id="diag-btn" title="下載診斷包(不含任何密碼),回報問題時把檔案傳給工程師">📦 匯出診斷包</button>
     <input type="file" id="importbk-file" accept=".zip" style="display:none">
+    <input type="file" id="importbk-folder" webkitdirectory directory multiple style="display:none">
   </div>
   <div id="ctx-menu">
     <div class="item" id="ctx-copy">複製<span class="shortcut">Ctrl+Shift+C</span></div>
@@ -629,21 +630,50 @@
         window.location.href = '/api/backup/export';
       });
 
-      // Import backup — pick a .zip and upload.
+      // Import backup — the user picks either a .zip file or a folder.
       var importFile = document.getElementById('importbk-file');
-      document.getElementById('importbk-btn').addEventListener('click', function () { importFile.click(); });
+      var importFolder = document.getElementById('importbk-folder');
+
+      function reportImport(rep) {
+        if (rep.error) { alert('匯入失敗:' + rep.error); return; }
+        alert('✅ 匯入完成:匯入 ' + rep.imported + '、補齊 ' + rep.merged +
+          '、跳過 ' + rep.skipped + '、失敗 ' + rep.errored + '。\n重開 Antigravity 後即可用。');
+      }
+
+      document.getElementById('importbk-btn').addEventListener('click', function () {
+        if (confirm('要匯入的是「壓縮檔(.zip)」嗎?\n\n按「確定」選 .zip 檔;按「取消」改選「資料夾」。')) {
+          importFile.click();
+        } else {
+          importFolder.click();
+        }
+      });
+
+      // .zip file → /api/backup/import
       importFile.addEventListener('change', function () {
         if (!importFile.files.length) return;
         var fd = new FormData();
         fd.append('file', importFile.files[0]);
         importFile.value = '';
         fetch('/api/backup/import', { method: 'POST', body: fd })
-          .then(function (r) { return r.json(); })
-          .then(function (rep) {
-            if (rep.error) { alert('匯入失敗:' + rep.error); return; }
-            alert('✅ 匯入完成:匯入 ' + rep.imported + '、補齊 ' + rep.merged +
-              '、跳過 ' + rep.skipped + '、失敗 ' + rep.errored + '。\n重開 Antigravity 後即可用。');
-          })
+          .then(function (r) { return r.json(); }).then(reportImport)
+          .catch(function (e) { alert('匯入失敗:' + e); });
+      });
+
+      // Folder → send only the persona files to /api/backup/import-folder.
+      importFolder.addEventListener('change', function () {
+        var picked = Array.prototype.slice.call(importFolder.files);
+        importFolder.value = '';
+        var keep = picked.filter(function (f) {
+          var p = (f.webkitRelativePath || f.name);
+          return /persona-writer\/personas\/[^/]+\/(persona\.md|wp-config\.json|published\.json)$/.test(p);
+        });
+        if (!keep.length) { alert('這個資料夾裡找不到人格資料(persona-writer/personas)。'); return; }
+        var fd = new FormData();
+        // Carry each file's relative path in the FIELD NAME (the server reads
+        // the map key; Go strips the path from the filename).
+        keep.forEach(function (f) { fd.append(f.webkitRelativePath || f.name, f); });
+        fetch('/api/backup/import-folder', { method: 'POST', body: fd })
+          .then(function (r) { return r.json(); }).then(reportImport)
           .catch(function (e) { alert('匯入失敗:' + e); });
       });
 

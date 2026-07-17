@@ -153,7 +153,49 @@ func Serve(addr, sandboxDir, shellPath string, shellArgs, env []string, geminiFl
 			return
 		}
 		json.NewEncoder(w).Encode(rep)
-		log.Printf("Backup imported: imported=%d merged=%d skipped=%d errored=%d",
+		log.Printf("Backup imported (zip): imported=%d merged=%d skipped=%d errored=%d",
+			rep.Imported, rep.Merged, rep.Skipped, rep.Errored)
+	})
+
+	// /api/backup/import-folder — import from a folder the user picked in the
+	// browser (webkitdirectory): each uploaded file part's filename is its
+	// relative path. Only persona files are kept; reuses the migrate engine.
+	mux.HandleFunc("/api/backup/import-folder", func(w http.ResponseWriter, r *http.Request) {
+		if !isLoopbackHost(r.Host) {
+			http.Error(w, "forbidden host", http.StatusForbidden)
+			return
+		}
+		if err := r.ParseMultipartForm(64 << 20); err != nil {
+			http.Error(w, "bad upload", http.StatusBadRequest)
+			return
+		}
+		var files []backup.UploadFile
+		// The relative path is carried in the form FIELD NAME (map key), not the
+		// filename — Go runs FileHeader.Filename through filepath.Base, which
+		// would strip the path we need.
+		for name, headers := range r.MultipartForm.File {
+			for _, fh := range headers {
+				f, err := fh.Open()
+				if err != nil {
+					continue
+				}
+				data, err := io.ReadAll(f)
+				f.Close()
+				if err != nil {
+					continue
+				}
+				files = append(files, backup.UploadFile{RelPath: name, Data: data})
+			}
+		}
+		rep, err := backup.ImportFiles(files, workspaceDir)
+		w.Header().Set("Content-Type", "application/json")
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+			return
+		}
+		json.NewEncoder(w).Encode(rep)
+		log.Printf("Backup imported (folder): imported=%d merged=%d skipped=%d errored=%d",
 			rep.Imported, rep.Merged, rep.Skipped, rep.Errored)
 	})
 
