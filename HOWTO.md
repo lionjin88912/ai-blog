@@ -4,7 +4,8 @@
 
 固定連結,不用找哪個檔最新:
 
-- **Windows:** https://github.com/lionjin88912/ai-blog/releases/latest/download/ai-blog-windows-amd64.exe
+- **Windows(正規安裝程式):** https://github.com/lionjin88912/ai-blog/releases/latest/download/ai-blog-setup.exe
+  下載後雙擊安裝 → 開始選單 / 桌面會出現「AI Blog 部落格」捷徑
 - 其他平台到 Releases 頁抓:https://github.com/lionjin88912/ai-blog/releases/latest
 
 App 右上角會顯示版本(例 `v1.0.0`),跟 Releases 頁最新版對一下就知道自己是不是最新。
@@ -13,7 +14,7 @@ App 右上角會顯示版本(例 `v1.0.0`),跟 Releases 頁最新版對一下就
 
 ## 🚀 推薦入口:Antigravity(agy)
 
-1. 直接雙擊 `ai-blog-windows-amd64.exe`(macOS 執行 `./ai-blog-darwin-arm64`)。**exe 放哪都行**(Downloads、桌面都可),它是純啟動器,不會在旁邊產生任何檔案
+1. Windows:裝完後從**開始選單 / 桌面捷徑**開啟「AI Blog 部落格」(macOS 執行 `./ai-blog-darwin-arm64`)
 2. 首次啟動會自動下載所有工具(Node.js、Antigravity CLI、Python、Git 等),約需 2-3 分鐘
 3. 瀏覽器開啟 Web Terminal 後,點畫面上的 **「Launch Antigravity」按鈕**
 4. 第一次會問「信任這個資料夾嗎?」→ 選**信任**(skills 才會載入)

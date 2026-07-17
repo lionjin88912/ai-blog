@@ -174,5 +174,8 @@ func main() {
 	// Start web server (blocks until Ctrl+C)
 	log.Printf("🌐 AI Blog 部落格: %s", url)
 	log.Println("   Press Ctrl+C to stop.")
-	log.Fatal(web.Serve(addr, absDir, shellBin, shellArgs, env, "", cmd.AppVersion()))
+	// Double-click / installer-shortcut launch runs agy with auto-approve so
+	// non-technical users aren't stopped by permission prompts (matches what
+	// the old .bat did). It's a local sandbox for a trusted internal tool.
+	log.Fatal(web.Serve(addr, absDir, shellBin, shellArgs, env, "--dangerously-skip-permissions", cmd.AppVersion()))
 }

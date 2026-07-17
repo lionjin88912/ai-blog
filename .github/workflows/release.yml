@@ -36,13 +36,12 @@ jobs:
       - name: Stage release assets
         run: |
           mkdir -p release
-          cp sandbox-src/dist/ai-blog-setup.exe release/
-          cp sandbox-src/dist/ai-blog-windows-amd64.exe release/
+          # Windows: ship the installer only (company machines allow installs).
+          cp sandbox-src/dist/ai-blog-setup.exe         release/
+          # macOS / Linux: portable binaries (no installer for those).
           cp sandbox-src/dist/ai-blog-darwin-arm64      release/
           cp sandbox-src/dist/ai-blog-darwin-amd64      release/
           cp sandbox-src/dist/ai-blog-linux-amd64       release/
-          cp sandbox-src/dist/pwsh.exe                  release/
-          cp ai-blog-windows-amd64.bat                  release/ 2>/dev/null || true
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
