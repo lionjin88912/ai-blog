@@ -1,4 +1,4 @@
-.PHONY: build run clean test build-all docker-build seed-sync seed-clean icon icon-check pwsh-embed
+.PHONY: build run clean test build-all docker-build seed-sync seed-clean icon icon-check pwsh-embed installer
 
 BINARY=ai-blog
 ifeq ($(OS),Windows_NT)
@@ -67,6 +67,16 @@ build-all: pwsh-embed icon-check seed-sync
 	GOOS=darwin GOARCH=arm64 go build -ldflags "$(LDFLAGS)" -o dist/ai-blog-darwin-arm64 .
 	GOOS=windows GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o dist/ai-blog-windows-amd64.exe .
 	GOOS=windows GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o dist/pwsh.exe ./cmd/pwsh-shim
+
+# Windows installer (NSIS). Needs makensis (brew install makensis / apt nsis).
+# Produces dist/ai-blog-setup.exe: per-user install (no admin), Start Menu +
+# Desktop shortcuts, Add/Remove Programs entry, data-preserving uninstaller.
+installer: build-all
+	cp dist/ai-blog-windows-amd64.exe build/ai-blog.exe
+	cd build && makensis -DVERSION=$(VERSION) installer.nsi
+	mv build/ai-blog-setup.exe dist/ai-blog-setup.exe
+	rm -f build/ai-blog.exe
+	@echo "installer: dist/ai-blog-setup.exe"
 
 docker-build:
 	mkdir -p dist

@@ -108,3 +108,6 @@ sandbox-src/dist/
 
 # icon 工具鏈(syso/ico/json 要進 git,工具本體不用)
 sandbox-src/build/goversioninfo
+
+sandbox-src/build/ai-blog.exe
+sandbox-src/build/icon-master.png

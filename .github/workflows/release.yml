@@ -26,13 +26,17 @@ jobs:
       - name: Sync VERSION to the pushed tag
         run: echo "${GITHUB_REF_NAME#v}" > VERSION
 
-      - name: Build all platforms
+      - name: Install NSIS
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq nsis
+
+      - name: Build all platforms + Windows installer
         working-directory: sandbox-src
-        run: make build-all
+        run: make installer
 
       - name: Stage release assets
         run: |
           mkdir -p release
+          cp sandbox-src/dist/ai-blog-setup.exe release/
           cp sandbox-src/dist/ai-blog-windows-amd64.exe release/
           cp sandbox-src/dist/ai-blog-darwin-arm64      release/
           cp sandbox-src/dist/ai-blog-darwin-amd64      release/
