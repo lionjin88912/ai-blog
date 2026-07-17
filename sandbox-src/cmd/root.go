@@ -26,7 +26,7 @@ var rootCmd = &cobra.Command{
 	Use:   "ai-blog",
 	Short: "AI Blog 部落格 — 行銷內容自動化",
 	Long: `AI Blog 部落格 — a local, portable environment for the marketing
-content factory: Node 22, Python 3.12, Antigravity CLI, GitHub Copilot CLI, uv.
+content factory: Node 22, Python 3.12, Antigravity CLI, uv.
 
 Get started:
   ai-blog init     Configure API keys and workspace

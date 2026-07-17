@@ -43,7 +43,7 @@ var shellCmd = &cobra.Command{
 
 
 
-		// Tell child tools (e.g. Copilot CLI) to use bash instead of pwsh
+		// Tell child tools to use bash as $SHELL on Windows
 		if runtime.GOOS == "windows" && shellBin != "powershell.exe" {
 			shellExec.Env = append(shellExec.Env, "SHELL="+shellBin)
 		}

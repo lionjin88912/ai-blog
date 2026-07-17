@@ -132,7 +132,7 @@
 │   ├── cmd/               # CLI 指令(cobra)
 │   ├── internal/
 │   │   ├── config/        # 設定檔處理
-│   │   ├── toolchain/     # Node/Python/Git/Antigravity CLI/Copilot/uv 下載安裝
+│   │   ├── toolchain/     # Node/Python/Git/Antigravity CLI/uv 下載安裝
 │   │   ├── web/           # 網頁終端(含 Launch Antigravity 按鈕)
 │   │   └── wizard/        # 互動式安裝選單
 │   ├── main.go / go.mod / Makefile / Dockerfile

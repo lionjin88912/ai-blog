@@ -23,7 +23,6 @@ func WriteShims(sandboxDir string, p Platform) error {
 	shims := []shim{
 		{"node", NodeBinPath(sandboxDir, p)},
 		{"npm", NpmBinPath(sandboxDir, p)},
-		{"copilot", CopilotBinPath(sandboxDir, p)},
 		{"uv", UVBinPath(sandboxDir, p)},
 		{"python", PythonBinPath(sandboxDir, p)},
 		{"python3", PythonBinPath(sandboxDir, p)}, // SOPs call python3; needed in native cmd mode
@@ -39,8 +38,8 @@ func WriteShims(sandboxDir string, p Platform) error {
 
 
 
-	// On Windows, create a pwsh shim that delegates to mingw64 bash.
-	// Copilot CLI expects pwsh; this makes it use bash instead.
+	// On Windows, provide a pwsh shim (delegates to native powershell.exe) for
+	// any tool that probes for "pwsh".
 	if p.OS == "windows" {
 		bashPath := GitBashPath(sandboxDir, p)
 		if err := writePwshShim(binDir, bashPath); err != nil {

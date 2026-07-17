@@ -1,8 +1,8 @@
 // pwsh-shim is a tiny executable that masquerades as pwsh.exe.
 //
-// Copilot CLI (and some tools) require "pwsh" (PowerShell 7). Windows ships
-// only powershell.exe (5.1) by default. This shim answers the version probe,
-// then forwards everything verbatim to a real PowerShell — preferring an
+// Some tools probe for "pwsh" (PowerShell 7). Windows ships only
+// powershell.exe (5.1) by default. This shim answers the version probe, then
+// forwards everything verbatim to a real PowerShell — preferring an
 // actually-installed pwsh.exe, else the built-in powershell.exe.
 //
 // It delegates to PowerShell, NOT bash: pwsh-style args (-Command / -File /
@@ -23,7 +23,7 @@ import (
 func main() {
 	args := os.Args[1:]
 
-	// Version probe → claim PowerShell 7 so Copilot CLI is satisfied.
+	// Version probe → claim PowerShell 7 so pwsh-expecting tools are satisfied.
 	if len(args) == 1 && (args[0] == "--version" || args[0] == "-v") {
 		fmt.Println("PowerShell 7.4.0")
 		os.Exit(0)

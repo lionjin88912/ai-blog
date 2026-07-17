@@ -123,7 +123,6 @@ func main() {
 		}{
 			{"Node 22", func() error { return toolchain.DownloadNode(absDir, p) }},
 			{"Antigravity CLI", func() error { return toolchain.InstallAntigravityCLI(absDir, p) }},
-			{"GitHub Copilot CLI", func() error { return toolchain.InstallCopilot(absDir, p) }},
 			{"uv", func() error { return toolchain.DownloadUV(absDir, p) }},
 			{"Python 3.12", func() error { return toolchain.InstallPython(absDir, p) }},
 			{"Portable Git", func() error { return toolchain.DownloadGit(absDir, p) }},

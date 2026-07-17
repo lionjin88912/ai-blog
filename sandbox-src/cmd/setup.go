@@ -13,8 +13,8 @@ import (
 var setupCmd = &cobra.Command{
 	Use:   "setup",
 	Short: "Download and install all sandbox tools",
-	Long: `Download Node 22, Antigravity CLI, GitHub Copilot CLI,
-uv, and Python 3.12 to the ./sandbox/ directory.`,
+	Long: `Download Node 22, Antigravity CLI, uv, and Python 3.12
+to the ./sandbox/ directory.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		absDir, err := filepath.Abs(sandboxDir)
 		if err != nil {
@@ -38,7 +38,6 @@ uv, and Python 3.12 to the ./sandbox/ directory.`,
 		}{
 			{"Node 22", func() error { return toolchain.DownloadNode(absDir, p) }},
 			{"Antigravity CLI", func() error { return toolchain.InstallAntigravityCLI(absDir, p) }},
-			{"GitHub Copilot CLI", func() error { return toolchain.InstallCopilot(absDir, p) }},
 			{"uv", func() error { return toolchain.DownloadUV(absDir, p) }},
 			{"Python 3.12", func() error { return toolchain.InstallPython(absDir, p) }},
 			{"Portable Git", func() error { return toolchain.DownloadGit(absDir, p) }},

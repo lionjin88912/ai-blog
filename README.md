@@ -1,6 +1,6 @@
 # AI Blog 部落格 CLI
 
-A portable, zero-install AI development sandbox. Double-click to launch a browser-based terminal with Gemini CLI, GitHub Copilot CLI, Python, Node.js, and Git — all self-contained, no system dependencies required.
+A portable, zero-install AI development sandbox. Double-click to launch a browser-based terminal with Antigravity CLI, Python, Node.js, and Git — all self-contained, no system dependencies required.
 
 ## Features
 
@@ -81,12 +81,11 @@ ai-blog(.exe)          Single binary (Go)
 │       ├── winpty_windows.go PTY via winpty.dll (Windows)
 │       └── pty_unix.go       PTY via creack/pty (macOS/Linux)
 └── sandbox/              Downloaded tools (auto-created)
-    ├── bin/              Shim scripts (gemini, git, node, python, uv)
+    ├── bin/              Shim scripts (agy, git, node, python, uv)
     ├── node/             Node.js 22
     ├── python/           Python 3.12 (via uv)
     ├── git/              Portable Git for Windows
-    ├── gemini/           Gemini CLI
-    ├── copilot/          GitHub Copilot CLI
+    ├── antigravity/      Antigravity CLI (agy)
     └── uv/               uv package manager
 ```
 
@@ -94,9 +93,8 @@ ai-blog(.exe)          Single binary (Go)
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| Node.js | 22.x | Runtime for Gemini CLI & Copilot CLI |
-| Gemini CLI | latest | Google AI assistant |
-| GitHub Copilot CLI | latest | GitHub AI assistant |
+| Node.js | 22.x | Runtime for the Antigravity CLI |
+| Antigravity CLI (agy) | latest | Google AI assistant |
 | Python | 3.12 | Scripting, automation |
 | uv | latest | Fast Python package manager |
 | Git | Portable | Version control (Windows only, macOS/Linux use system git) |

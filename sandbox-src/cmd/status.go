@@ -32,7 +32,6 @@ var statusCmd = &cobra.Command{
 			{"Node", toolchain.NodeBinPath(absDir, p), []string{"--version"}},
 			{"npm", toolchain.NpmBinPath(absDir, p), []string{"--version"}},
 			{"Antigravity CLI", toolchain.AntigravityBinPath(absDir, p), []string{"--version"}},
-			{"Copilot CLI", toolchain.CopilotBinPath(absDir, p), []string{"--version"}},
 			{"uv", toolchain.UVBinPath(absDir, p), []string{"--version"}},
 			{"Python", toolchain.PythonBinPath(absDir, p), []string{"--version"}},
 		}
