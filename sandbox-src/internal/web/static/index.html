@@ -134,6 +134,61 @@
     #diag-btn:hover { filter: brightness(1.1); }
     #diag-btn:active { transform: scale(0.96); }
 
+    /* Friendly input bar (types into the terminal below) */
+    #input-bar {
+      flex: 0 0 auto;
+      border-top: 1px solid #313244;
+      background: #181825;
+      padding: 8px 10px 10px;
+    }
+    #ctrl-keys {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+    #ctrl-keys button {
+      background: #313244;
+      color: #cdd6f4;
+      border: none;
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      font-family: system-ui, "Microsoft JhengHei", sans-serif;
+    }
+    #ctrl-keys button:hover { background: #45475a; }
+    #ctrl-keys button:active { transform: scale(0.95); }
+    #input-row { display: flex; gap: 8px; align-items: flex-end; }
+    #input_cmd {
+      flex: 1;
+      resize: none;
+      max-height: 160px;
+      background: #1e1e2e;
+      color: #cdd6f4;
+      border: 1px solid #45475a;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 14px;
+      font-family: system-ui, "Microsoft JhengHei", sans-serif;
+      line-height: 1.5;
+    }
+    #input_cmd:focus { outline: none; border-color: #89b4fa; }
+    #input_cmd::placeholder { color: #6c7086; }
+    #send-btn {
+      background: #a6e3a1;
+      color: #1e1e2e;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: system-ui, "Microsoft JhengHei", sans-serif;
+    }
+    #send-btn:hover { filter: brightness(1.05); }
+    #send-btn:active { transform: scale(0.97); }
+
     /* First-run migrate dialog */
     #migrate-overlay {
       position: fixed;
@@ -290,6 +345,20 @@
   <div id="quick-bar"></div>
   <div id="main-wrap">
     <div id="terminal-container"></div>
+  </div>
+  <div id="input-bar">
+    <div id="ctrl-keys">
+      <button data-key="\x1b" title="Esc">Esc</button>
+      <button data-key="\x1b[A" title="上">↑</button>
+      <button data-key="\x1b[B" title="下">↓</button>
+      <button data-key="\x09" title="Tab / 自動完成">Tab</button>
+      <button data-key="\r" title="Enter / 確認">⏎ Enter</button>
+      <button data-key="\x03" title="中斷 Ctrl+C">Ctrl+C</button>
+    </div>
+    <div id="input-row">
+      <textarea id="input_cmd" rows="1" placeholder="輸入訊息或指令(例:寫一篇文章、/skills)… Enter 送出"></textarea>
+      <button id="send-btn">送出</button>
+    </div>
   </div>
   <button id="launch-btn">🚀 啟動 Antigravity</button>
   <div id="migrate-overlay">
@@ -681,6 +750,64 @@
         if (data === '\r' || data === '\n') clearMenu();
       });
 
+      // --- Friendly input bar → types into the terminal (PTY) ---
+      var inputEl = document.getElementById('input_cmd');
+      var sendBtn = document.getElementById('send-btn');
+
+      function dismissLaunch() {
+        if (!antigravityLaunched && shellReady) {
+          antigravityLaunched = true;
+          launchBtn.classList.remove('visible');
+          launchBtn.classList.add('fadeout');
+          setTimeout(function () { launchBtn.remove(); }, 400);
+        }
+      }
+
+      // Send a line of input into the PTY. Slash-commands open agy's live
+      // command palette (rendered in the terminal), which needs a moment to
+      // filter before Enter selects the match — so give "/..." a longer settle
+      // delay before the auto-Enter; plain text sends Enter promptly.
+      function sendCommand() {
+        if (ws.readyState !== WebSocket.OPEN) return;
+        var text = inputEl.value.replace(/\s+$/, '');
+        if (!text) return;
+        var isSlash = text.charAt(0) === '/';
+        ws.send(text);
+        setTimeout(function () { ws.send('\r'); }, isSlash ? 350 : 60);
+        inputEl.value = '';
+        inputEl.style.height = 'auto';
+        clearMenu();
+        dismissLaunch();
+        inputEl.focus();
+      }
+
+      sendBtn.addEventListener('click', sendCommand);
+      inputEl.addEventListener('keydown', function (e) {
+        // Enter sends; Shift+Enter inserts a newline (compose multi-line).
+        if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+          e.preventDefault();
+          sendCommand();
+        }
+      });
+      inputEl.addEventListener('input', function () {
+        this.style.height = 'auto';
+        this.style.height = Math.min(this.scrollHeight, 160) + 'px';
+        fitAddon.fit();
+      });
+
+      // Control keys → raw escape sequences into the PTY (for agy menus etc.)
+      document.getElementById('ctrl-keys').addEventListener('click', function (e) {
+        var btn = e.target.closest('button[data-key]');
+        if (!btn || ws.readyState !== WebSocket.OPEN) return;
+        var key = btn.getAttribute('data-key')
+          .replace(/\\x1b/g, '\x1b').replace(/\\x09/g, '\x09')
+          .replace(/\\x03/g, '\x03').replace(/\\x04/g, '\x04')
+          .replace(/\\r/g, '\r');
+        ws.send(key);
+        dismissLaunch();
+        inputEl.focus();
+      });
+
       // --- Quick-reply bar logic ---
       var quickBar = document.getElementById('quick-bar');
       var menuBuf = '';
@@ -820,8 +947,8 @@
         }
       }
 
-      // Focus terminal on load
-      term.focus();
+      // Focus the friendly input box on load (falls back fine if absent).
+      inputEl.focus();
     })();
   </script>
 </body>
